@@ -1,7 +1,8 @@
 # RETURN HANDOVER — OmniRoute live inference + Phase 9 self-test
 
-**For:** returning architect agent. **Driver seat: Claude Opus/Sonnet via OmniRoute**
-(see `config/models.json`). GLM-5.2 is fallback for reasoning roles.
+**For:** returning architect agent. **Driver seat: `antigravity/claude-sonnet-4-6`**
+via OmniRoute (fastest, best code performance). Fallback to
+`antigravity/claude-opus-4-6-thinking` for deep reasoning. See `config/models.json`.
 **From:** ground-build + OmniRoute integration session (v0.2.0).
 
 ## 1. Current state (verified, evidence-backed)
