@@ -7,6 +7,16 @@
 (ORCHESTRATOR, BLUEPRINT, PLAN, BUILDER_FINAL, BEHOLDER, REPAIR_DIAG,
 REPAIR_APPLY, RELEASE).** Single source of truth: `config/models.json`.
 
+As of v0.1.5 all calls go through the local **OmniRoute** gateway on
+`http://localhost:20128/v1`:
+
+- `BUILDER_DRAFT` / `QA` use the zero-config free provider `oc/nemotron-3-ultra-free`.
+- All judgment roles use `nvidia/z-ai/glm-5.2` (still billed to your NIM key, but
+  queued/rated/failover-managed by the gateway).
+- The direct `nim` provider is retained in `config/models.json` as an emergency
+  fallback: change a role's `"provider"` back to `"nim"` and its `"model"` to the
+  bare NIM id if OmniRoute is down.
+
 ## Benchmark basis (Aug 2026)
 
 - Artificial Analysis Intelligence Index: GLM-5.2 = 51 vs Nemotron-3-Ultra = 38.
@@ -44,6 +54,7 @@ Triggers (each requires an observed, logged event, never a prediction):
 5. Any role requires a model id not present in `config/models.json`.
 
 Dormant break-even additions (human decision only, in this order):
+additional OmniRoute free providers (Antigravity, OpenRouter free tier) →
 local Ollama draft model → Z.ai direct / OpenRouter prepaid balance →
 OpenAI API for BEHOLDER only.
 

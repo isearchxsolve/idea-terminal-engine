@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.1.5 — OmniRoute gateway integration (credit-saver pass)
+
+- Installed and running OmniRoute AI gateway locally on `http://localhost:20128/v1`.
+- `config/models.json`: added `omniroute` provider as the primary adapter; NVIDIA NIM
+  kept as direct fallback provider.
+- Free zero-config roles: `BUILDER_DRAFT` and `QA` now route to
+  `oc/nemotron-3-ultra-free` (zero-cost via OmniRoute/OpenCode free tier).
+- Judgment roles route to `nvidia/z-ai/glm-5.2` through the gateway (uses existing
+  NIM key, but gains queue/rate/failover management).
+- `engine/agents/runners.py`: request body now forces `stream: false` so the gateway
+  returns a standard JSON completion instead of SSE chunks.
+- `config/secrets.example.json` documents both `OMNIROUTE_*` and `NIM_*` keys.
+- Live verification: free Nemotron call completed through gateway in 126 ms at $0.
+- Tests: 42 passed.
+
 ## v0.1.4 — orchestrator + inference client implemented (headroom pass)
 
 - engine/agents/runners.py: real OpenAI-compatible NIM client (stdlib urllib),
