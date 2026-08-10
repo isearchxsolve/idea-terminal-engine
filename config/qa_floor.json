@@ -1,0 +1,6 @@
+{
+  "standard_min_tests": 200,
+  "complex_min_tests": 500,
+  "required_flow_coverage": 1.0,
+  "exemption_policy": "A Phase-2 flow may be excluded from coverage only via an explicit, logged exemption recorded in the run report. Coverage is computed over non-exempt flows. Counts are a floor metric; the gate is coverage plus the anti-triviality check."
+}

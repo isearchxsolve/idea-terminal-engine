@@ -1,0 +1,22 @@
+{
+  "providers": {
+    "nim": {
+      "base_url_env": "NIM_BASE_URL",
+      "api_key_env": "NIM_API_KEY",
+      "default_base_url": "https://integrate.api.nvidia.com/v1"
+    }
+  },
+  "routing_rule": "Nemotron only for high-volume roles whose output is mechanically verifiable; GLM-5.2 for all roles where judgment is the product.",
+  "roles": {
+    "ORCHESTRATOR":  {"provider": "nim", "model": "z-ai/glm-5.2"},
+    "BLUEPRINT":     {"provider": "nim", "model": "z-ai/glm-5.2"},
+    "PLAN":          {"provider": "nim", "model": "z-ai/glm-5.2"},
+    "BUILDER_DRAFT": {"provider": "nim", "model": "nvidia/nemotron-3-ultra"},
+    "BUILDER_FINAL": {"provider": "nim", "model": "z-ai/glm-5.2"},
+    "BEHOLDER":      {"provider": "nim", "model": "z-ai/glm-5.2"},
+    "QA":            {"provider": "nim", "model": "nvidia/nemotron-3-ultra"},
+    "REPAIR_DIAG":   {"provider": "nim", "model": "z-ai/glm-5.2"},
+    "REPAIR_APPLY":  {"provider": "nim", "model": "z-ai/glm-5.2"},
+    "RELEASE":       {"provider": "nim", "model": "z-ai/glm-5.2"}
+  }
+}
