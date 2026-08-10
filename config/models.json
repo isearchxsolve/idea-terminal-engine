@@ -11,17 +11,46 @@
       "default_base_url": "https://integrate.api.nvidia.com/v1"
     }
   },
-  "routing_rule": "OmniRoute is the primary adapter. Free zero-config providers handle high-volume mechanical roles; paid NVIDIA NIM handles judgment roles. NIM provider kept as direct fallback.",
+  "routing_rule": "OmniRoute is the primary adapter. Claude (agy/antigravity) for reasoning. Gemini for speed. GLM-5.2 (nvidia) for diversity. GPT via cx/ (codex, rate-limited). Fallback chains for resilience.",
   "roles": {
-    "ORCHESTRATOR":  {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"},
-    "BLUEPRINT":     {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"},
-    "PLAN":          {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"},
-    "BUILDER_DRAFT": {"provider": "omniroute", "model": "oc/nemotron-3-ultra-free"},
-    "BUILDER_FINAL": {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"},
-    "BEHOLDER":      {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"},
-    "QA":            {"provider": "omniroute", "model": "oc/nemotron-3-ultra-free"},
-    "REPAIR_DIAG":   {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"},
-    "REPAIR_APPLY":  {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"},
-    "RELEASE":       {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}
+    "ORCHESTRATOR":  {"provider": "omniroute", "model": "agy/claude-opus-4-6-thinking", "fallback": [{"provider": "omniroute", "model": "antigravity/claude-opus-4-6-thinking"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]},
+    "BLUEPRINT":     {"provider": "omniroute", "model": "antigravity/claude-sonnet-4-6", "fallback": [{"provider": "omniroute", "model": "agy/claude-sonnet-4-6"}, {"provider": "omniroute", "model": "cx/gpt-5.6-sol"}]},
+    "PLAN":          {"provider": "omniroute", "model": "antigravity/claude-sonnet-4-6", "fallback": [{"provider": "omniroute", "model": "agy/claude-sonnet-4-6"}, {"provider": "omniroute", "model": "cx/gpt-5.6-sol"}]},
+    "BUILDER_DRAFT": {"provider": "omniroute", "model": "antigravity/gemini-3.6-flash-high", "fallback": [{"provider": "omniroute", "model": "agy/gemini-3.6-flash-high"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]},
+    "BUILDER_FINAL": {"provider": "omniroute", "model": "antigravity/claude-sonnet-4-6", "fallback": [{"provider": "omniroute", "model": "agy/claude-sonnet-4-6"}, {"provider": "omniroute", "model": "cx/gpt-5.6-sol"}]},
+    "BEHOLDER":      {"provider": "omniroute", "model": "antigravity/claude-opus-4-6-thinking", "fallback": [{"provider": "omniroute", "model": "agy/claude-opus-4-6-thinking"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]},
+    "QA":            {"provider": "omniroute", "model": "antigravity/gemini-3.6-flash-high", "fallback": [{"provider": "omniroute", "model": "agy/gemini-3.6-flash-high"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]},
+    "REPAIR_DIAG":   {"provider": "omniroute", "model": "agy/claude-opus-4-6-thinking", "fallback": [{"provider": "omniroute", "model": "antigravity/claude-opus-4-6-thinking"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]},
+    "REPAIR_APPLY":  {"provider": "omniroute", "model": "antigravity/claude-sonnet-4-6", "fallback": [{"provider": "omniroute", "model": "agy/claude-sonnet-4-6"}, {"provider": "omniroute", "model": "cx/gpt-5.6-sol"}]},
+    "RELEASE":       {"provider": "omniroute", "model": "agy/claude-opus-4-6-thinking", "fallback": [{"provider": "omniroute", "model": "antigravity/claude-opus-4-6-thinking"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]}
+  },
+  "verified_working": {
+    "timestamp": "2026-08-11",
+    "models": {
+      "antigravity/gemini-3.6-flash-high": {"latency_s": 3.3, "provider_status": "ok"},
+      "antigravity/claude-sonnet-4-6": {"latency_s": 3.7, "provider_status": "ok"},
+      "agy/claude-sonnet-4-6": {"latency_s": 3.8, "provider_status": "ok"},
+      "agy/gemini-3.6-flash-high": {"latency_s": 4.8, "provider_status": "ok"},
+      "auto/coding:free": {"latency_s": 5.2, "provider_status": "ok"},
+      "antigravity/claude-opus-4-6-thinking": {"latency_s": 6.3, "provider_status": "ok"},
+      "agy/claude-opus-4-6-thinking": {"latency_s": 8.2, "provider_status": "ok"},
+      "auto/best-coding": {"latency_s": 15.3, "provider_status": "ok"},
+      "nvidia/z-ai/glm-5.2": {"latency_s": 6.0, "provider_status": "ok"}
+    },
+    "gpt_status": {
+      "cx/gpt-5.6-sol": "429 rate-limited (codex alias, will recover after cooldown)",
+      "note": "All GPT models require paid API keys OR codex rate-limit reset. cx/* is the free path."
+    },
+    "providers_dead": {
+      "openrouter": "401/502 - needs account setup",
+      "opencode": "403 Forbidden - all models blocked",
+      "codex": "429 Rate limited - cooldown needed",
+      "kilocode": "401/timeout - models not routable",
+      "amazon-q": "500 Internal - models not found",
+      "kimi-coding": "timeout/404 - models not routable",
+      "nvidia": "404 for most model IDs, BUT nvidia/z-ai/glm-5.2 works (6.0s)",
+      "cline": "CLI runtime not installed",
+      "xai-oauth": "402 Payment required"
+    }
   }
 }

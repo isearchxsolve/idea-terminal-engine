@@ -60,8 +60,30 @@ def _write_files(run_dir: Path, files: dict):
 
 
 def _run_acceptance(run_dir, task) -> list:
-    return [evidence_runner.run_command(cmd, run_dir, task["id"])
-            for cmd in task["acceptance_criteria"]]
+    """Run acceptance criteria as commands. Non-command items become failing evidence."""
+    import uuid as _uuid
+    from datetime import datetime, timezone
+    results = []
+    for cmd in task["acceptance_criteria"]:
+        try:
+            results.append(evidence_runner.run_command(cmd, run_dir, task["id"]))
+        except VerificationFailureError as exc:
+            # Fail closed: record the failure as evidence, don't crash
+            results.append({
+                "id": f"EV-{_uuid.uuid4().hex[:12]}",
+                "version": 1,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "recorded",
+                "source_ref": f"task:{task['id']}",
+                "command": cmd,
+                "exit_code": 1,
+                "stdout": "",
+                "stderr": str(exc),
+                "files_changed": [],
+                "tests_run": 0,
+                "task_id": task["id"],
+            })
+    return results
 
 
 def _build_task(run_dir, task, arts, limiter, budget):

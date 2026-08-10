@@ -41,6 +41,9 @@ def _cmd_step(args):
 
 
 def _cmd_doctor(args):
+    import json as _json
+    import urllib.request as _urlopen
+    import urllib.error as _urlerr
     ok = True
     print(f"python: {platform.python_version()}")
     print(f"os: {platform.platform()}")
@@ -53,7 +56,8 @@ def _cmd_doctor(args):
           + ("present (gitignored)" if paths.config_path("secrets.json").exists()
              else "absent (expected until wiring)"))
     try:
-        print(f"models.json roles: {len(cfg.load_models()['roles'])}")
+        models_cfg = cfg.load_models()
+        print(f"models.json roles: {len(models_cfg['roles'])}")
     except Exception as exc:  # noqa: BLE001 - doctor reports, never crashes
         ok = False
         print(f"models.json: ERROR {exc}")
@@ -63,7 +67,55 @@ def _cmd_doctor(args):
     except Exception as exc:  # noqa: BLE001
         ok = False
         print(f"qa_floor.json: ERROR {exc}")
-    print(f"inference: NOT WIRED (scaffold) — {NOT_WIRED}")
+    # Live inference probe via OmniRoute
+    try:
+        from engine.agents.runners import load_secrets, role_model
+        provider_cfg = models_cfg["providers"]["omniroute"]
+        import os as _os
+        secrets = load_secrets()
+        base_url = (_os.environ.get(provider_cfg["base_url_env"])
+                    or secrets.get(provider_cfg["base_url_env"])
+                    or provider_cfg.get("default_base_url"))
+        api_key = (_os.environ.get(provider_cfg["api_key_env"])
+                   or secrets.get(provider_cfg["api_key_env"]) or "omni")
+        # Probe /models endpoint
+        models_url = base_url.rstrip("/") + "/models"
+        req = _urlopen.Request(models_url,
+                               headers={"Authorization": f"Bearer {api_key}"})
+        with _urlopen.urlopen(req, timeout=10) as resp:
+            model_list = _json.loads(resp.read().decode("utf-8"))
+        n_models = len(model_list.get("data", []))
+        print(f"omniroute: ok ({n_models} models available)")
+        # Quick inference test with a lightweight role
+        test_role = "BUILDER_DRAFT"  # free model, cheapest probe
+        routing = role_model(test_role)
+        body = _json.dumps({
+            "model": routing["model"],
+            "messages": [{"role": "user", "content": "Reply with exactly: PONG"}],
+            "max_tokens": 16, "stream": False,
+        }).encode("utf-8")
+        inf_req = _urlopen.Request(
+            base_url.rstrip("/") + "/chat/completions", data=body,
+            headers={"Authorization": f"Bearer {api_key}",
+                     "Content-Type": "application/json"}, method="POST")
+        with _urlopen.urlopen(inf_req, timeout=60) as resp:
+            payload = _json.loads(resp.read().decode("utf-8"))
+        text = payload["choices"][0]["message"]["content"].strip()
+        if text:
+            print(f"inference: LIVE ({routing['model']} -> {text[:60]!r})")
+        else:
+            print("inference: EMPTY RESPONSE — model returned nothing")
+            ok = False
+    except Exception as exc:  # noqa: BLE001
+        ok = False
+        print(f"inference: FAIL ({exc})")
+    # Show active routing table
+    try:
+        print("\nActive routing:")
+        for role, entry in models_cfg["roles"].items():
+            print(f"  {role:16s} -> {entry['model']}")
+    except Exception:
+        pass
     return 0 if ok else 1
 
 

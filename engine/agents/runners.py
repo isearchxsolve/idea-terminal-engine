@@ -43,9 +43,8 @@ def load_secrets() -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def call_model(role, prompt, context=None, limiter=None, budget=None):
-    """One paced, budgeted inference call. Returns the assistant text."""
-    routing = role_model(role)
+def _call_once(routing, role, prompt, context, limiter, budget):
+    """Single inference call. Raises InferenceCallError on failure."""
     provider = cfg.load_models()["providers"][routing["provider"]]
     secrets = load_secrets()
     base_url = (os.environ.get(provider["base_url_env"])
@@ -91,14 +90,76 @@ def call_model(role, prompt, context=None, limiter=None, budget=None):
         limiter.release()
 
 
+def call_model(role, prompt, context=None, limiter=None, budget=None):
+    """One paced, budgeted inference call with fallback chain support.
+
+    Tries the primary model for the role; on failure, walks the fallback
+    list from config/models.json until one succeeds.
+    """
+    routing = role_model(role)
+
+    # Try primary
+    try:
+        return _call_once(routing, role, prompt, context, limiter, budget)
+    except InferenceCallError as primary_exc:
+        # Walk fallback chain
+        fallbacks = routing.get("fallback", [])
+        for i, fb in enumerate(fallbacks):
+            try:
+                return _call_once(fb, role, prompt, context, limiter, budget)
+            except InferenceCallError:
+                continue
+        # All fallbacks exhausted
+        raise primary_exc
+
+
+def _extract_json(text: str) -> str:
+    """Extract a JSON object from model output that may contain extra text."""
+    import re
+    stripped = text.strip()
+    # Try direct parse first
+    try:
+        json.loads(stripped)
+        return stripped
+    except json.JSONDecodeError:
+        pass
+    # Try markdown code block: ```json ... ``` or ``` ... ```
+    m = re.search(r'```(?:json)?\s*\n?(\{.*?\})\s*\n?```', stripped, re.DOTALL)
+    if m:
+        try:
+            json.loads(m.group(1))
+            return m.group(1)
+        except json.JSONDecodeError:
+            pass
+    # Try finding first { ... } pair (outermost balanced braces)
+    start = stripped.find('{')
+    if start != -1:
+        depth = 0
+        for i in range(start, len(stripped)):
+            if stripped[i] == '{':
+                depth += 1
+            elif stripped[i] == '}':
+                depth -= 1
+                if depth == 0:
+                    candidate = stripped[start:i + 1]
+                    try:
+                        json.loads(candidate)
+                        return candidate
+                    except json.JSONDecodeError:
+                        break
+    return stripped  # return as-is; caller will raise
+
+
 def call_json(role, prompt, context=None, limiter=None, budget=None):
-    """call_model + strict JSON parse. Malformed JSON = inference failure."""
+    """call_json + robust JSON extraction. Malformed JSON = inference failure."""
     text = call_model(role, prompt + "\nRespond with ONLY a valid JSON object.",
                       context, limiter, budget)
+    extracted = _extract_json(text)
     try:
-        return json.loads(text)
+        return json.loads(extracted)
     except json.JSONDecodeError as exc:
-        raise InferenceCallError(f"malformed JSON from {role}: {exc}") from exc
+        raise InferenceCallError(
+            f"malformed JSON from {role}: {exc} (raw: {text[:200]!r})") from exc
 
 
 def classify_error(exc):

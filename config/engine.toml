@@ -1,19 +1,19 @@
 # Engine runtime configuration. Source code must never hardcode these values.
 
 [pacing]
-max_in_flight = 3
-min_interval_seconds = 1.6
-backoff_base_seconds = 2.0
-backoff_max_seconds = 60.0
+max_in_flight = 1
+min_interval_seconds = 3.0
+backoff_base_seconds = 5.0
+backoff_max_seconds = 120.0
 
 [budget]
 max_inference_calls = 4000
 max_retries_per_task = 5
 
 [inference]
-timeout_seconds = 120
-max_output_tokens = 4096
+timeout_seconds = 300
+max_output_tokens = 16384
 
 [exec]
 timeout_seconds = 120
-allowed_commands = ["python", "py", "node", "npx"]
+allowed_commands = ["python", "py", "node", "npx", "npm"]

@@ -96,6 +96,8 @@ def test_beholder_rejection_routes_to_repair_then_fails(tmp_path, monkeypatch):
 
 def test_missing_secrets_is_inference_failure(monkeypatch):
     monkeypatch.delenv("NIM_API_KEY", raising=False)
+    monkeypatch.delenv("OMNIROUTE_API_KEY", raising=False)
+    monkeypatch.setattr(runners, "load_secrets", lambda: {})
     with pytest.raises(InferenceCallError):
         runners.call_model("QA", "x", limiter=fast_limiter(),
                            budget=BudgetTracker())

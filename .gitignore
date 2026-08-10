@@ -4,3 +4,16 @@ __pycache__/
 .venv/
 config/secrets.json
 clients/
+
+# Setup artifacts (screenshots, intermediate json)
+scripts/*.png
+scripts/connection_results.json
+scripts/discovered_providers.json
+scripts/final_connection_status.json
+scripts/frontier_model_status.json
+scripts/all_model_providers.json
+scripts/all_provider_nodes.json
+scripts/dialog_items.json
+scripts/model_provider_prefixes.json
+scripts/provider_registry.json
+scripts/dashboard_providers.html
