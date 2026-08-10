@@ -1,22 +1,27 @@
 {
   "providers": {
+    "omniroute": {
+      "base_url_env": "OMNIROUTE_BASE_URL",
+      "api_key_env": "OMNIROUTE_API_KEY",
+      "default_base_url": "http://localhost:20128/v1"
+    },
     "nim": {
       "base_url_env": "NIM_BASE_URL",
       "api_key_env": "NIM_API_KEY",
       "default_base_url": "https://integrate.api.nvidia.com/v1"
     }
   },
-  "routing_rule": "Nemotron only for high-volume roles whose output is mechanically verifiable; GLM-5.2 for all roles where judgment is the product.",
+  "routing_rule": "OmniRoute is the primary adapter. Free zero-config providers handle high-volume mechanical roles; paid NVIDIA NIM handles judgment roles. NIM provider kept as direct fallback.",
   "roles": {
-    "ORCHESTRATOR":  {"provider": "nim", "model": "z-ai/glm-5.2"},
-    "BLUEPRINT":     {"provider": "nim", "model": "z-ai/glm-5.2"},
-    "PLAN":          {"provider": "nim", "model": "z-ai/glm-5.2"},
-    "BUILDER_DRAFT": {"provider": "nim", "model": "nvidia/nemotron-3-ultra"},
-    "BUILDER_FINAL": {"provider": "nim", "model": "z-ai/glm-5.2"},
-    "BEHOLDER":      {"provider": "nim", "model": "z-ai/glm-5.2"},
-    "QA":            {"provider": "nim", "model": "nvidia/nemotron-3-ultra"},
-    "REPAIR_DIAG":   {"provider": "nim", "model": "z-ai/glm-5.2"},
-    "REPAIR_APPLY":  {"provider": "nim", "model": "z-ai/glm-5.2"},
-    "RELEASE":       {"provider": "nim", "model": "z-ai/glm-5.2"}
+    "ORCHESTRATOR":  {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"},
+    "BLUEPRINT":     {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"},
+    "PLAN":          {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"},
+    "BUILDER_DRAFT": {"provider": "omniroute", "model": "oc/nemotron-3-ultra-free"},
+    "BUILDER_FINAL": {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"},
+    "BEHOLDER":      {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"},
+    "QA":            {"provider": "omniroute", "model": "oc/nemotron-3-ultra-free"},
+    "REPAIR_DIAG":   {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"},
+    "REPAIR_APPLY":  {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"},
+    "RELEASE":       {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}
   }
 }

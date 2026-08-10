@@ -72,6 +72,7 @@ def call_model(role, prompt, context=None, limiter=None, budget=None):
             "model": routing["model"],
             "messages": messages,
             "max_tokens": int(inference["max_output_tokens"]),
+            "stream": False,
         }).encode("utf-8")
         req = urllib.request.Request(
             base_url.rstrip("/") + "/chat/completions", data=body,
