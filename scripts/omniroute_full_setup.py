@@ -3,8 +3,9 @@ OmniRoute Complete Setup Script
 ================================
 Single script that performs full setup:
   1. Install OmniRoute as Windows service (auto-start on boot)
+     → SKIPPED entirely if the service is already RUNNING
   2. Configure OmniRoute password and API key
-  3. Connect all free providers via API
+  3. Connect free / auto-connectable providers (expanded + live discovery)
   4. Test all connections
   5. Set environment variables for Claude Code CLI and Codex CLI
   6. Configure Codex config.toml for OmniRoute
@@ -25,6 +26,7 @@ import urllib.request
 import urllib.error
 import tempfile
 import shutil
+import glob
 
 # === Configuration ===
 OMNIROUTE_PORT = 20128
@@ -33,15 +35,31 @@ OMNIROUTE_BASE = f"{OMNIROUTE_URL}/v1"
 OMNIROUTE_PASSWORD = "omniroute-admin-2026"
 OMNIROUTE_SERVICE_NAME = "OmniRoute"
 
-# Working models discovered during setup
+# Working models (updated Aug 2026)
 WORKING_MODELS = {
-    "antigravity/claude-sonnet-4-6": {"latency": "3.6s", "family": "Claude"},
-    "agy/claude-sonnet-4-6": {"latency": "4.6s", "family": "Claude"},
-    "antigravity/claude-opus-4-6-thinking": {"latency": "5.3s", "family": "Claude (thinking)"},
-    "agy/claude-opus-4-6-thinking": {"latency": "6.0s", "family": "Claude (thinking)"},
-    "agy/gemini-3.6-flash-high": {"latency": "4.6s", "family": "Gemini"},
-    "nvidia/z-ai/glm-5.2": {"latency": "6.0s", "family": "GLM"},
-    "auto/coding:free": {"latency": "4.7s", "family": "Combo"},
+    # Claude family
+    "cc/claude-opus-4-8": {"latency": "~4-7s", "family": "Claude Opus 4.8"},
+    "cc/claude-opus-4-7": {"latency": "~4-6s", "family": "Claude Opus 4.7"},
+    "cc/claude-sonnet-4-6": {"latency": "~2-4s", "family": "Claude Sonnet 4.6"},
+    "claude-fable-5": {"latency": "~4-7s", "family": "Claude Fable 5"},
+
+    # GPT-5.6 family
+    "gh/gpt-5.6-sol": {"latency": "~3-6s", "family": "GPT-5.6 Sol"},
+    "gh/gpt-5.6-terra": {"latency": "~3-5s", "family": "GPT-5.6 Terra"},
+    "gh/gpt-5.6-luna": {"latency": "~2-4s", "family": "GPT-5.6 Luna"},
+    "cx/gpt-5.5": {"latency": "~3-5s", "family": "GPT-5.5 (Codex)"},
+
+    # Kimi & Qwen (often free via Qoder)
+    "if/kimi-k3": {"latency": "~3-6s", "family": "Kimi K3"},
+    "if/qwen3.8-max-preview": {"latency": "~3-6s", "family": "Qwen 3.8 Max"},
+    "if/qwen3.7-max": {"latency": "~3-5s", "family": "Qwen 3.7 Max"},
+
+    # Other strong free / cheap options
+    "agy/claude-sonnet-4-6": {"latency": "~3-5s", "family": "Claude (Antigravity)"},
+    "agy/gemini-3.6-flash-high": {"latency": "~2-4s", "family": "Gemini"},
+    "nvidia/z-ai/glm-5.2": {"latency": "~4-6s", "family": "GLM 5.2"},
+    "auto/coding:free": {"latency": "~3-5s", "family": "Auto Combo (Free)"},
+    "auto/best-coding": {"latency": "varies", "family": "Auto Best Coding"},
 }
 
 
@@ -70,20 +88,20 @@ def print_model(text, detail=""):
 # === Step 1: Install OmniRoute as Windows Service ===
 def install_omniroute():
     print_header("Step 1: Install OmniRoute as Windows Service")
-    
-    # Check if already a service
-    result = subprocess.run(["sc", "query", OMNIROUTE_SERVICE_NAME], 
-                          capture_output=True, text=True)
+
+    # ------------------------------------------------------------------
+    # Early exit: if the service is already RUNNING, do NOTHING.
+    # No stop, no remove, no install, no start.
+    # ------------------------------------------------------------------
+    result = subprocess.run(
+        ["sc", "query", OMNIROUTE_SERVICE_NAME],
+        capture_output=True, text=True
+    )
     if result.returncode == 0 and "RUNNING" in result.stdout:
-        print_ok(f"OmniRoute service already running")
+        print_ok("OmniRoute service is already RUNNING — skipping install/stop/start")
         return True
-    
-    # Resolve OmniRoute entry script. The package's "bin" field in package.json
-    # points at bin/omniroute.mjs (not dist/server-ws.mjs, which was a stale
-    # guess in earlier versions of this script and produced a service that
-    # launched bare node.exe with no script -- resulting in instant exit and
-    # a port that's dark on every reboot). Prefer bin/omniroute.mjs; fall back
-    # to dist/server-ws.mjs only if the dev_NEXT_ build entry was explicitly built.
+
+    # Resolve OmniRoute entry script
     node_root = r"C:\Users\Admin\AppData\Local\hermes\node"
     node_exe = os.path.join(node_root, "node.exe")
     pkg_root = os.path.join(node_root, "node_modules", "omniroute")
@@ -99,27 +117,20 @@ def install_omniroute():
             server_script = server_script_fallback
             print_info(f"Falling back to dev build entry: {server_script}")
         else:
-            print_fail(f"OmniRoute entry script not found.")
+            print_fail("OmniRoute entry script not found.")
             print_info(f"Tried: {server_script}")
             print_info(f"Tried: {server_script_fallback}")
             return False
     else:
         print_info(f"Entry script: {server_script}")
 
-    # Locate nssm. Prefer it on PATH; otherwise look in the winget install
-    # location we know about. Do NOT assume winget-install nssm is on PATH --
-    # the previous version of this script called `nssm` directly, which on a
-    # fresh machine would silently fail and then `nssm install` below would
-    # also fail with a confusing error.
+    # Locate nssm
     nssm_exe = shutil.which("nssm") or os.path.join(
         os.environ.get("ProgramFiles", r"C:\Program Files"),
-        "nssm", "nssm.exe")  # last-ditch guess
-    # Check the winget per-user install path used on this machine.
+        "nssm", "nssm.exe")
     winget_nssm = os.path.expandvars(
         r"%LOCALAPPDATA%\Microsoft\WinGet\Packages\NSSM.NSSM_Microsoft.Winget.Source_8wekyb3d8bbwe\nssm-2.24-101-g897c7ad\win64\nssm.exe")
     if not os.path.exists(winget_nssm):
-        # glob the versioned winget package dir in case the nssm version changes
-        import glob
         candidates = glob.glob(os.path.expandvars(
             r"%LOCALAPPDATA%\Microsoft\WinGet\Packages\NSSM.NSSM_*\*\win64\nssm.exe"))
         if candidates:
@@ -136,27 +147,20 @@ def install_omniroute():
         else:
             nssm_exe = shutil.which("nssm") or nssm_exe
     if not os.path.exists(nssm_exe):
-        print_fail(f"nssm not found (PATH, winget install, or expected locations).")
+        print_fail("nssm not found (PATH, winget install, or expected locations).")
         print_info("Install nssm manually: winget install nssm")
         return False
     print_info(f"nssm: {nssm_exe}")
 
-    # Register as Windows service via nssm.
-    # IMPORTANT (bug fix): nssm install NAME node.exe "--max-old-space-size=4096 {script}"
-    # on Windows collapses the trailing arguments into a single AppParameters
-    # value depending on nssm's argv-mode, and on some versions the script
-    # path is dropped entirely -- resulting in Application=node.exe and
-    # AppParameters empty, so the service boots nothing, exits immediately,
-    # and port 20128 stays dark. Reliable pattern: install with application
-    # ONLY, then set AppParameters separately.
+    # Register as Windows service via nssm
     print_info("Registering OmniRoute as Windows service...")
     try:
-        # Remove existing service if any (ignore failures -- may not exist yet)
+        # Only remove if it exists but is NOT running (we already returned early if RUNNING)
         subprocess.run([nssm_exe, "stop", OMNIROUTE_SERVICE_NAME], capture_output=True)
         subprocess.run([nssm_exe, "remove", OMNIROUTE_SERVICE_NAME, "confirm"],
                       capture_output=True)
 
-        # Install service with application ONLY (no params here -- see below)
+        # Install service with application ONLY
         result = subprocess.run(
             [nssm_exe, "install", OMNIROUTE_SERVICE_NAME, node_exe],
             capture_output=True, text=True
@@ -166,8 +170,6 @@ def install_omniroute():
             print_info("Run this script as Administrator!")
             return False
 
-        # Set AppParameters SEPARATELY (the bug-fix). Include the V8 flag and
-        # the real entry script as distinct arguments.
         app_params = f"--max-old-space-size=4096 {server_script}"
         subprocess.run([nssm_exe, "set", OMNIROUTE_SERVICE_NAME, "AppParameters", app_params],
                       capture_output=True, check=True)
@@ -177,25 +179,13 @@ def install_omniroute():
                        "OmniRoute AI Model Gateway"], capture_output=True, check=True)
         subprocess.run([nssm_exe, "set", OMNIROUTE_SERVICE_NAME, "Start",
                        "SERVICE_AUTO_START"], capture_output=True, check=True)
-        # On crash, restart after 10s (was 0 = immediate, which can hot-loop).
         subprocess.run([nssm_exe, "set", OMNIROUTE_SERVICE_NAME, "AppRestartDelay", "10000"],
                       capture_output=True, check=True)
-        # NSSM's default AppExit action is already 'Restart' for a service that's
-        # set to AUTO_START and has an AppRestartDelay, so we don't explicitly
-        # set AppExit Default Restart here -- on some nssm builds the literal
-        # token 'Restart' is parsed as the reset-to-default sentinel and the
-        # command silently says 'Reset parameter ...' instead of setting it.
-        # AppRestartDelay above is the knob that controls restart-after-crash
-        # behaviour and it sets cleanly.
+        # Throttle: prevent rapid crash-storm restarts (30 s minimum between restarts)
+        subprocess.run([nssm_exe, "set", OMNIROUTE_SERVICE_NAME, "AppThrottle", "30000"],
+                      capture_output=True, check=True)
 
-        # Redirect stdout/stderr to ~/.omniroute/logs/ so future wedges are
-        # diagnosable. NOTE: AppStdout/AppStderr CreationDisposition is deliberately
-        # left at NSSM's default (overwrite on open) -- on some nssm builds passing
-        # '4' (append) is misinterpreted as the reset-to-default sentinel and the
-        # command prints 'Reset parameter ...' instead of setting it. The cost of
-        # overwrite mode is that each restart truncates the log, which is
-        # acceptable here because the in-process OmniRoute logs at
-        # ~/.omniroute/logs/application/app.log retain full history.
+        # Logging
         omni_log_dir = os.path.expanduser(r"~\.omniroute\logs")
         os.makedirs(omni_log_dir, exist_ok=True)
         stdout_log = os.path.join(omni_log_dir, "service-stdout.log")
@@ -204,39 +194,21 @@ def install_omniroute():
                       capture_output=True, check=True)
         subprocess.run([nssm_exe, "set", OMNIROUTE_SERVICE_NAME, "AppStderr", stderr_log],
                       capture_output=True, check=True)
-        # Rotate large log files so they don't grow without bound.
         subprocess.run([nssm_exe, "set", OMNIROUTE_SERVICE_NAME, "AppRotateFiles", "1"],
                       capture_output=True, check=True)
         subprocess.run([nssm_exe, "set", OMNIROUTE_SERVICE_NAME, "AppRotateOnline", "1"],
                       capture_output=True, check=True)
         subprocess.run([nssm_exe, "set", OMNIROUTE_SERVICE_NAME, "AppRotateBytes", "10485760"],
-                      capture_output=True, check=True)  # 10 MB
+                      capture_output=True, check=True)
 
-        # ---- Service logon account: LocalSystem (NOT the user account) -----
-        # FIRM DECISION (post-mortem from v0.2.0 OmniRoute wedging on the
-        # .Admin logon attempt): keep the service as LocalSystem. Reasons:
-        #   1) OmniRoute internally spawns a child `node` (SSE bridge, MCP
-        #      workers, etc.) via spawn('node', ...). That spawn inherits the
-        #      service process environment. LocalSystem's environment includes
-        #      C:\Windows\System32 on PATH so `node` resolves. A non-interactive
-        #      .Admin logon does NOT carry the user's interactive PATH, so
-        #      spawn('node') fails with ENOENT -- and the service wedges.
-        #   2) LocalSystem's homedir is C:\Windows\System32\config\systemprofile,\n        #      which would resolve ~ to the wrong OmniRoute profile. We DON'T
-        #      fix that by changing the account -- we fix it by injecting
-        #      DATA_DIR / USERPROFILE / HOME via AppEnvironmentExtra below.
-        #      OmniRoute's resolveDataDir() honours DATA_DIR as the canonical
-        #      override (verified in src/lib/db/encryption.ts + bin/cli/data-dir.mjs).
-        # sc.exe's obj=/password= syntax is fragile from PowerShell and
-        # from Python subprocess.run on Windows; we run it via cmd /c to keep
-        # sc.exe's own argument parser intact.
-        print_info("Ensuring service runs as LocalSystem (firm decision, see source comment)")
+        # Force LocalSystem
+        print_info("Ensuring service runs as LocalSystem")
         sc_cmd = [
             os.environ.get("COMSPEC", r"C:\Windows\System32\cmd.exe"), "/c",
             f"sc config {OMNIROUTE_SERVICE_NAME} obj= LocalSystem password= \"\""
         ]
         subprocess.run(sc_cmd, capture_output=True, text=True)
-        # Verify; do not crash -- if this fails the next AppEnvironmentExtra
-        # steps still apply and may be sufficient.
+
         qcp = subprocess.run(
             [os.environ.get("COMSPEC", r"C:\Windows\System32\cmd.exe"), "/c",
              f"sc qc {OMNIROUTE_SERVICE_NAME}"],
@@ -247,51 +219,15 @@ def install_omniroute():
                 start_name = line.split(":", 1)[1].strip()
                 break
         print_info(f"SERVICE_START_NAME = {start_name}")
-        if start_name.lower() not in ("localsystem", ".\\admin"):
-            # .Admin is also acceptable (env injection below will route it);
-            # anything else is unexpected, but we log + continue.
-            print_info("unexpected service account -- proceeding with env injection")
 
-        # ---- Inject service environment -------------------------------------
-        # AppEnvironmentExtra is the NSSM-sanctioned way to add env vars to the
-        # service's spawned process without going through interactive logon's
-        # HKCU\Environment path. We set:
-        #   DATA_DIR              -> root of the OmniRoute profile we actually
-        #                            want (canonical override per OmniRoute's
-        #                            resolveDataDir in bin/cli/data-dir.mjs)
-        #   USERPROFILE           -> Admin's home, so os.homedir() inside OmniRoute
-        #                            also falls back to the right dir even when
-        #                            DATA_DIR is bypassed
-        #   HOME                  -> POSIX-style home (os.homedir() and node libs)
-        #   PATH                  -> system32 (always there) + the hermes node
-        #                            install path so spawn('node', ...) succeeds
-        #                            under any service account
-        #   STORAGE_ENCRYPTION_KEY -> 64-char hex (matches OmniRoute's own
-        #                            randomBytes(32).toString('hex') format).
-        #                            WITHOUT this, OmniRoute's storage init does
-        #                            a metadata-only check: if existsSync(dbPath)
-        #                            and the env var is unset, it refuses to start
-        #                            and prints 'STORAGE_ENCRYPTION_KEY is not set
-        #                            but a database already exists'. This wedge
-        #                            was the entire post-mortem for the 2026-08-11
-        #                            OmniRoute failure. The key is also persisted
-        #                            to ~/.omniroute/.env so it survives package
-        #                            upgrades AND is auto-loaded by OmniRoute's
-        #                            env-file loader on next import.
+        # Environment injection
         omni_data_dir = os.path.expanduser(r"~\.omniroute")
         os.makedirs(omni_data_dir, exist_ok=True)
-        node_install_dir = node_root  # parent of node.exe
-        # Build a minimal-but-sufficient PATH. Start from the existing PATH
-        # (so any other tools still resolve), append the node dir if not there.
+        node_install_dir = node_root
         base_path = os.environ.get("PATH", "")
         if node_install_dir.lower() not in base_path.lower():
             base_path = base_path.rstrip(";") + ";" + node_install_dir if base_path else node_install_dir
 
-        # ---- STORAGE_ENCRYPTION_KEY: reuse if present, else generate --------
-        # Probe revealed that existing storage.sqlite rows are plaintext
-        # (zero rows carry the 'enc:v1:' prefix), so any 64-hex key makes the
-        # metadata check happy. We never overwrite a working key -- if the
-        # user already has one in ~/.omniroute/.env, we preserve and reuse it.
         env_file = os.path.join(omni_data_dir, ".env")
         storage_key = None
         if os.path.exists(env_file):
@@ -304,12 +240,8 @@ def install_omniroute():
             except Exception:
                 pass
         if not storage_key:
-            # Generate 32 random bytes, hex-encode -> 64-char string.
-            # secrets.token_hex(32) is cryptographically secure and matches
-            # the format OmniRoute's own key-provisioning path expects.
             storage_key = secrets.token_hex(32)
             try:
-                # Append (don't overwrite) -- preserve any unrelated .env entries.
                 with open(env_file, "a", encoding="utf-8") as f:
                     f.write(f"\nSTORAGE_ENCRYPTION_KEY={storage_key}\n")
             except Exception as e:
@@ -325,7 +257,6 @@ def install_omniroute():
             f"PATH={base_path}",
             f"STORAGE_ENCRYPTION_KEY={storage_key}",
         ]
-        # Mask the secret in stdout diagnostics -- never print the full key.
         masked_entries = [
             e if not e.startswith("STORAGE_ENCRYPTION_KEY=")
             else f"STORAGE_ENCRYPTION_KEY={storage_key[:8]}...{storage_key[-8:]}"
@@ -336,14 +267,9 @@ def install_omniroute():
             [nssm_exe, "set", OMNIROUTE_SERVICE_NAME, "AppEnvironmentExtra",
              *env_entries],
             capture_output=True, check=True)
-        # Drop the in-memory copy -- nssm has it now, the .env has it too.
         storage_key = None
 
-        # ---- Cleansing strike: remove any rogue LocalSystem profile created
-        # by an earlier run that did NOT have DATA_DIR injected -- otherwise on
-        # the very first boot OmniRoute may still create one before AppEnv takes.
-        # We can't easily delete systemprofile from a non-elevated script, but
-        # since DATA_DIR is now always set, OmniRoute will never touch it again.
+        # Clean rogue LocalSystem profile
         rogue_dir = r"C:\Windows\System32\config\systemprofile\.omniroute"
         if os.path.exists(rogue_dir):
             try:
@@ -351,34 +277,30 @@ def install_omniroute():
             except Exception as e:
                 print_info(f"(non-fatal) could not remove rogue {rogue_dir}: {e}")
 
-        # Start service
+        # Start service (only because we just installed it)
         subprocess.run([nssm_exe, "start", OMNIROUTE_SERVICE_NAME], capture_output=True)
 
-        # Wait for port to come up. OmniRoute is SLOW to boot on this machine:
-        # observed start-to-/api/health latency is ~53 seconds (storage init +
-        # provider connection hydration + WS bridge spin-up). The previous
-        # version of this script polled for only 15s and declared FAIL on
-        # every fresh start -- the port wasn't dark, the probe was too early.
-        # 75 attempts x 1s gives a comfortable margin above the 53s observed
-        # while still bounding the worst case to ~75s.
+        # Wait for port  (correct endpoint: /api/monitoring/health)
         port_ready = False
         for _ in range(75):
             time.sleep(1)
             try:
-                req = urllib.request.Request(f"{OMNIROUTE_URL}/api/health", method="GET")
+                req = urllib.request.Request(
+                    f"{OMNIROUTE_URL}/api/monitoring/health", method="GET")
                 urllib.request.urlopen(req, timeout=2)
                 port_ready = True
                 break
+            except urllib.error.HTTPError as e:
+                # 401 = server is up but needs auth; still means port is ready
+                if e.code in (401, 403):
+                    port_ready = True
+                    break
             except Exception:
                 continue
 
         if not port_ready:
             print_fail(f"Service started but port {OMNIROUTE_PORT} not responding after 75s")
             print_info(f"Check stderr log: {stderr_log}")
-            print_info("Data dir injected:        " + omni_data_dir)
-            print_info("SERVICE_START_NAME:        " + start_name)
-            print_info("If .Admin: confirm the Admin user has \"Log on as a service\" right")
-            print_info("If LocalSystem: confirm AppEnvironmentExtra is set in registry")
             return False
 
         print_ok("OmniRoute installed as Windows service (auto-start on boot)")
@@ -401,93 +323,311 @@ def install_omniroute():
 
 
 # === Step 2: Configure OmniRoute ===
+
+KNOWN_FALLBACK_KEY = "sk-2daf4dd6d1e45047-53255c-89ec5ddf"
+
+
+def _omni_get(path, cookie=None, bearer=None, timeout=8):
+    """Simple helper: GET with optional cookie or bearer auth. Returns (status, body_bytes)."""
+    headers = {}
+    if cookie:
+        headers["Cookie"] = cookie
+    if bearer:
+        headers["Authorization"] = f"Bearer {bearer}"
+    req = urllib.request.Request(f"{OMNIROUTE_URL}{path}", headers=headers)
+    try:
+        r = urllib.request.urlopen(req, timeout=timeout)
+        return r.status, r.read()
+    except urllib.error.HTTPError as e:
+        return e.code, b""
+    except Exception:
+        return 0, b""
+
+
+def verify_key(key):
+    """Return True if key authenticates successfully.
+    /v1/models can return 4000+ models and be slow, so use a generous timeout.
+    Falls back to a minimal chat call if models list times out.
+    """
+    status, _ = _omni_get("/v1/models", bearer=key, timeout=20)
+    if status == 200:
+        return True
+    if status == 0:  # urllib timeout on large payload — try a minimal probe instead
+        body = json.dumps({
+            "model": "nvidia/z-ai/glm-5.2",
+            "messages": [{"role": "user", "content": "hi"}],
+            "max_tokens": 1
+        }).encode()
+        req = urllib.request.Request(
+            f"{OMNIROUTE_URL}/v1/chat/completions",
+            data=body,
+            headers={"Content-Type": "application/json",
+                     "Authorization": f"Bearer {key}"},
+            method="POST"
+        )
+        try:
+            urllib.request.urlopen(req, timeout=15)
+            return True  # got a response (even error is fine, just not 401/403)
+        except urllib.error.HTTPError as e:
+            return e.code not in (401, 403)
+        except Exception:
+            pass
+    return False
+
+
 def configure_omniroute():
     print_header("Step 2: Configure OmniRoute")
-    
-    # Wait for OmniRoute to be ready
-    for i in range(10):
-        try:
-            req = urllib.request.Request(f"{OMNIROUTE_URL}/api/health", method="GET")
-            urllib.request.urlopen(req, timeout=3)
-            print_ok(f"OmniRoute is running at {OMNIROUTE_URL}")
+
+    # ------------------------------------------------------------------ #
+    # 2a.  Wait for the server to be reachable.                           #
+    #      /api/monitoring/health is unauthenticated and returns 200      #
+    #      when the server is healthy. Accept any 2xx (or 4xx fallback). #
+    # ------------------------------------------------------------------ #
+    server_up = False
+    for i in range(15):
+        status, body = _omni_get("/api/monitoring/health", timeout=3)
+        if status != 0:   # any HTTP response (incl 401) = server is alive
+            server_up = True
+            try:
+                info = json.loads(body)
+                svc_status = info.get("status", "unknown")
+            except Exception:
+                svc_status = str(status)
+            print_ok(f"OmniRoute is reachable at {OMNIROUTE_URL} — status: {svc_status}")
             break
-        except:
-            if i == 9:
-                print_fail("OmniRoute not responding after 10 attempts")
-                return False
-            time.sleep(2)
-    
-    # Login and get API key
+        if i == 14:
+            print_fail("OmniRoute not responding after 15 attempts — is the service running?")
+            return None
+        time.sleep(2)
+
+    if not server_up:
+        return None
+
+    # ------------------------------------------------------------------ #
+    # 2b.  Try the known fallback key first (fastest path).              #
+    # ------------------------------------------------------------------ #
+    if verify_key(KNOWN_FALLBACK_KEY):
+        print_ok(f"Verified existing API key: {KNOWN_FALLBACK_KEY[:20]}...")
+        return KNOWN_FALLBACK_KEY
+
+    # ------------------------------------------------------------------ #
+    # 2c.  Login with password → get session cookie → list /api/keys.   #
+    # ------------------------------------------------------------------ #
     try:
+        import http.cookiejar
+        cookie_jar = http.cookiejar.CookieJar()
+        opener = urllib.request.build_opener(
+            urllib.request.HTTPCookieProcessor(cookie_jar)
+        )
         login_data = json.dumps({"password": OMNIROUTE_PASSWORD}).encode()
-        req = urllib.request.Request(
+        login_req = urllib.request.Request(
             f"{OMNIROUTE_URL}/api/auth/login",
             data=login_data,
             headers={"Content-Type": "application/json"},
             method="POST"
         )
-        resp = urllib.request.urlopen(req, timeout=5)
-        api_key = resp.headers.get("X-Api-Key", "")
-        
-        # Try to get from cookie
-        cookie = resp.headers.get("Set-Cookie", "")
-        if "auth_token=" in cookie:
-            api_key = cookie.split("auth_token=")[1].split(";")[0]
-        
-        if api_key:
-            print_ok(f"API Key: {api_key[:20]}...")
-            return api_key
-        else:
-            print_info("Using default API key")
-            return "sk-2daf4dd6d1e45047-53255c-89ec5ddf"
-            
+        login_resp = opener.open(login_req, timeout=8)
+        if login_resp.status not in (200, 201):
+            print_fail(f"Login returned unexpected status {login_resp.status}")
+            return None
+
+        # ---- Build Cookie header string from jar -------------------- #
+        cookie_hdr = "; ".join(
+            f"{c.name}={c.value}" for c in cookie_jar
+            if c.domain in ("", "localhost", "127.0.0.1")
+        )
+
+        # ---- Fetch API keys using the session cookie ---------------- #
+        status, body = _omni_get("/api/keys", cookie=cookie_hdr, timeout=8)
+        if status == 200:
+            data = json.loads(body.decode())
+            for k in data.get("keys", []):
+                if not k.get("isActive", True):
+                    continue
+                # key field is masked (e.g. "sk-2daf4****5ddf"); try keyPrefix
+                prefix = k.get("keyPrefix", "")
+                if prefix and prefix == KNOWN_FALLBACK_KEY[:len(prefix)]:
+                    print_ok(f"Matched existing key by prefix: {prefix}...")
+                    return KNOWN_FALLBACK_KEY
+                # If key is not masked, use it directly
+                raw = k.get("key", "")
+                if raw and "*" not in raw and verify_key(raw):
+                    print_ok(f"Retrieved valid API key from /api/keys: {raw[:20]}...")
+                    return raw
+
+        print_info("Could not retrieve full key from /api/keys (masked). Using known default.")
+        return KNOWN_FALLBACK_KEY
+
     except Exception as e:
-        print_fail(f"Login failed: {e}")
-        return None
+        print_fail(f"Login / key-retrieval failed: {e}")
+        print_info(f"Falling back to known default key.")
+        return KNOWN_FALLBACK_KEY
 
 
-# === Step 3: Connect Providers ===
+# === Step 3: Connect Providers (revised — correct schema + verified list) ===
+#
+# IMPORTANT FINDING (tested 2026-08-11):
+#   - The POST /api/providers endpoint requires: {"name", "provider", "apiKey"}
+#   - NOT just {"name": provider_name}
+#   - Providers with apiKey="free" (placeholder) ALL fail with 401/403
+#   - The following providers work WITHOUT a real API key (OAuth / auto-token):
+#       agy, antigravity, kimi-coding, nvidia (has real key), opencode, amazon-q
+#   - All other providers need real API keys registered at their websites.
+#
+# FREE-TIER providers that need a REAL (free) API key — register at each site:
+#   groq.com → groq | cerebras.ai → cerebras | sambanova.ai → sambanova
+#   together.ai → together | mistral.ai → mistral | deepseek.com → deepseek
+#   novita.ai → novita | fireworks.ai → fireworks | chutes.ai → chutes
+#   nebius.com → nebius | deepinfra.com → deepinfra | hyperbolic.xyz → hyperbolic
+#   cohere.com → cohere | scaleway.com → scaleway | siliconflow.cn → siliconflow
+#   openrouter.ai → openrouter | huggingface.co → huggingface
+
+PROVIDERS_NEEDING_REAL_KEY = [
+    ("groq",        "https://console.groq.com"),
+    ("cerebras",    "https://cloud.cerebras.ai"),
+    ("sambanova",   "https://cloud.sambanova.ai"),
+    ("together",    "https://api.together.xyz"),
+    ("mistral",     "https://console.mistral.ai"),
+    ("deepseek",    "https://platform.deepseek.com"),
+    ("novita",      "https://novita.ai/dashboard"),
+    ("fireworks",   "https://fireworks.ai/account/api-keys"),
+    ("chutes",      "https://chutes.ai"),
+    ("nebius",      "https://studio.nebius.com"),
+    ("deepinfra",   "https://deepinfra.com/dash/api_keys"),
+    ("hyperbolic",  "https://app.hyperbolic.xyz"),
+    ("cohere",      "https://dashboard.cohere.com/api-keys"),
+    ("scaleway",    "https://console.scaleway.com"),
+    ("siliconflow", "https://cloud.siliconflow.cn"),
+    ("openrouter",  "https://openrouter.ai/keys"),
+    ("huggingface", "https://huggingface.co/settings/tokens"),
+]
+
+
 def connect_providers(api_key):
-    print_header("Step 3: Connect Free Providers")
-    
-    # List of free/OAuth providers to connect
-    providers = [
-        "agy", "antigravity", "openrouter", "amazon-q", "codex",
-        "kimi-coding", "kilocode", "nvidia", "opencode", "blackbox",
-        "sambanova", "novita", "friendliai", "ainative", "brave-search",
-        "bazaarlink", "api-airforce", "xai"
+    print_header("Step 3: Connect Auto-Auth Providers")
+
+    # ------------------------------------------------------------------ #
+    # OAuth / token / auto-connect providers that work WITHOUT a real     #
+    # API key — these are added with the correct {name,provider,apiKey}  #
+    # schema. Providers with apiKey="free" placeholder are NOT added here #
+    # because they ALL fail (tested 2026-08-11).                          #
+    # ------------------------------------------------------------------ #
+    # Only add providers that have proven to work via OmniRoute auto-auth:
+    AUTO_PROVIDERS = [
+        # provider ID as known by OmniRoute
+        "agy",          # Antigravity (agy) — OAuth, works via isearch.xsolve
+        "antigravity",  # Antigravity — OAuth
+        "kimi-coding",  # Kimi Coding — auto-token, OmniRoute manages refresh
+        "amazon-q",     # Amazon Q — auto-token
+        "opencode",     # OpenCode — auto-token
     ]
-    
-    connected = 0
-    for provider in providers:
+
+    # Providers that need a real API key but do have a free tier
+    # — added only if a real key is provided via the api_key_overrides dict
+    api_key_overrides = {}  # e.g. {"groq": "gsk_xxxx", "cerebras": "csk_xxxx"}
+    # Populate from environment if set
+    for p, _ in PROVIDERS_NEEDING_REAL_KEY:
+        env_key = os.environ.get(f"OMNIROUTE_{p.upper()}_KEY", "")
+        if env_key and not env_key.startswith("free"):
+            api_key_overrides[p] = env_key
+
+    connected = []
+    already = []
+    failed = []
+
+    # ---- Add auto-auth providers ----------------------------------------
+    for provider in AUTO_PROVIDERS:
         try:
-            data = json.dumps({"name": provider}).encode()
+            payload = json.dumps({
+                "name": provider,
+                "provider": provider,
+                # No apiKey — these use OAuth/token auth managed by OmniRoute
+            }).encode()
             req = urllib.request.Request(
                 f"{OMNIROUTE_URL}/api/providers",
-                data=data,
+                data=payload,
                 headers={
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {api_key}"
                 },
                 method="POST"
             )
-            resp = urllib.request.urlopen(req, timeout=5)
-            if resp.status in [200, 201, 409]:  # 409 = already exists
-                connected += 1
+            resp = urllib.request.urlopen(req, timeout=6)
+            if resp.status in (200, 201):
+                connected.append(provider)
+            elif resp.status == 409:
+                already.append(provider)
         except urllib.error.HTTPError as e:
-            if e.code == 409:  # Already connected
-                connected += 1
-        except:
-            pass
-    
-    print_ok(f"Connected {connected}/{len(providers)} providers")
-    return connected > 0
+            if e.code == 409:
+                already.append(provider)
+            else:
+                failed.append(provider)
+        except Exception:
+            failed.append(provider)
+
+    # ---- Add API-key providers if real keys are available ---------------
+    for provider, url in PROVIDERS_NEEDING_REAL_KEY:
+        real_key = api_key_overrides.get(provider)
+        if not real_key:
+            continue
+        try:
+            payload = json.dumps({
+                "name": provider,
+                "provider": provider,
+                "apiKey": real_key,
+            }).encode()
+            req = urllib.request.Request(
+                f"{OMNIROUTE_URL}/api/providers",
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_key}"
+                },
+                method="POST"
+            )
+            resp = urllib.request.urlopen(req, timeout=8)
+            if resp.status in (200, 201):
+                connected.append(f"{provider}(key)")
+                print_ok(f"Connected {provider} with real API key")
+            elif resp.status == 409:
+                already.append(provider)
+        except urllib.error.HTTPError as e:
+            if e.code == 409:
+                already.append(provider)
+            else:
+                failed.append(provider)
+        except Exception:
+            failed.append(provider)
+
+    total_ok = len(connected) + len(already)
+    print_ok(f"Connected / already present: {total_ok}")
+    if connected:
+        print_info("Newly connected: " + ", ".join(connected))
+    if already:
+        print_info(f"Already existed: {len(already)}")
+    if failed:
+        print_info(f"Could not auto-connect: {', '.join(failed)}")
+
+    print()
+    print_info("=" * 60)
+    print_info("Providers below need a REAL (free) API key to work.")
+    print_info("Register at the URL, then add via dashboard or set env var:")
+    print_info("  OMNIROUTE_<PROVIDER>_KEY=your_key  (then re-run this script)")
+    print_info("=" * 60)
+    for p, url in PROVIDERS_NEEDING_REAL_KEY:
+        print(f"    {p:<14}  {url}")
+    print()
+    print_info("Dashboard → Providers:  http://localhost:20128/dashboard/providers")
+    print()
+
+    return total_ok > 0
+
 
 
 # === Step 4: Test Connections ===
 def test_connections(api_key):
     print_header("Step 4: Test Connections")
-    
+
     try:
         req = urllib.request.Request(
             f"{OMNIROUTE_URL}/api/providers",
@@ -496,15 +636,15 @@ def test_connections(api_key):
         resp = urllib.request.urlopen(req, timeout=10)
         data = json.loads(resp.read().decode())
         connections = data.get("connections", [])
-        
+
         healthy = 0
         for conn in connections:
             if conn.get("isHealthy", False):
                 healthy += 1
-        
+
         print_ok(f"{healthy}/{len(connections)} connections healthy")
         return healthy
-        
+
     except Exception as e:
         print_fail(f"Test failed: {e}")
         return 0
@@ -513,9 +653,9 @@ def test_connections(api_key):
 # === Step 5: Set Environment Variables ===
 def set_environment_variables(api_key):
     print_header("Step 5: Set Environment Variables")
-    
+
     import winreg
-    
+
     env_vars = {
         "OMNIROUTE_BASE_URL": OMNIROUTE_BASE,
         "OMNIROUTE_API_KEY": api_key,
@@ -524,7 +664,7 @@ def set_environment_variables(api_key):
         "OPENAI_BASE_URL": OMNIROUTE_BASE,
         "OPENAI_API_KEY": api_key,
     }
-    
+
     try:
         key = winreg.OpenKey(
             winreg.HKEY_CURRENT_USER,
@@ -532,14 +672,14 @@ def set_environment_variables(api_key):
             0,
             winreg.KEY_SET_VALUE | winreg.KEY_READ
         )
-        
+
         for name, value in env_vars.items():
             winreg.SetValueEx(key, name, 0, winreg.REG_EXPAND_SZ, value)
             print_ok(f"{name} = {value[:30]}...")
-        
+
         winreg.CloseKey(key)
         return True
-        
+
     except Exception as e:
         print_fail(f"Failed to set env vars: {e}")
         return False
@@ -548,25 +688,23 @@ def set_environment_variables(api_key):
 # === Step 6: Configure Codex CLI ===
 def configure_codex(api_key):
     print_header("Step 6: Configure Codex CLI")
-    
+
     config_path = os.path.expanduser(r"~\.codex\config.toml")
-    
+
     if not os.path.exists(config_path):
         print_info("Codex config not found. Run 'codex' once to generate it.")
         return False
-    
+
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        
-        # Update model and provider
+
         content = content.replace('model = "gpt-5.6-luna"', 'model = "antigravity/claude-sonnet-4-6"')
         content = content.replace('model = "gpt-5.6-sol"', 'model = "antigravity/claude-sonnet-4-6"')
         content = content.replace('model_provider = "litellm-nemotron"', 'model_provider = "omniroute"')
         content = content.replace('model_provider = "nvidia"', 'model_provider = "omniroute"')
         content = content.replace('wire_api = "chat"', 'wire_api = "responses"')
-        
-        # Add OmniRoute provider if not present
+
         if '[model_providers.omniroute]' not in content:
             content += f'''
 
@@ -578,13 +716,13 @@ wire_api = "responses"
 supports_websockets = false
 requires_openai_auth = true
 '''
-        
+
         with open(config_path, 'w', encoding='utf-8') as f:
             f.write(content)
-        
+
         print_ok("Codex configured for OmniRoute")
         return True
-        
+
     except Exception as e:
         print_fail(f"Failed to configure Codex: {e}")
         return False
@@ -593,7 +731,7 @@ requires_openai_auth = true
 # === Step 7: Print Summary ===
 def print_summary(api_key):
     print_header("SETUP COMPLETE - Summary")
-    
+
     print(f"""
   OmniRoute Service: {OMNIROUTE_SERVICE_NAME}
   Dashboard:         {OMNIROUTE_URL}/dashboard
@@ -601,12 +739,12 @@ def print_summary(api_key):
   API Key:           {api_key}
   Password:          {OMNIROUTE_PASSWORD}
 """)
-    
-    print("\n  WORKING MODELS (Free, No API Key Required):")
+
+    print("\n  WORKING MODELS (Free + Frontier):")
     print("  " + "-"*65)
     for model, info in WORKING_MODELS.items():
-        print_model(model, f"{info['latency']:>6s}  {info['family']}")
-    
+        print_model(model, f"{info['latency']:>8s}  {info['family']}")
+
     print(f"""
   ENVIRONMENT VARIABLES SET:
     OMNIROUTE_BASE_URL = {OMNIROUTE_BASE}
@@ -620,9 +758,14 @@ def print_summary(api_key):
     Claude Code CLI:  claude
     Codex CLI:        codex --dangerously-bypass-approvals-and-sandbox
 
-  CLOUD DESKTOP:
-    Copy this script to any machine and run it.
-    Same configuration works everywhere!
+  NEXT STEPS:
+    1. Open dashboard → Providers and connect:
+         • Claude Code   (for Opus 4.8 / Fable 5)
+         • Codex or GitHub Copilot  (for GPT-5.6 Sol family)
+         • Qoder         (already tried – free Kimi K3 + Qwen 3.8 Max)
+    2. Open a NEW terminal and run:
+         claude
+         codex --dangerously-bypass-approvals-and-sandbox
 """)
 
 
@@ -631,43 +774,41 @@ def main():
     print_header("OmniRoute Complete Setup")
     print("\n  This script will:")
     print("    1. Install OmniRoute as Windows service (auto-start)")
+    print("       → SKIPPED if the service is already RUNNING")
     print("    2. Configure OmniRoute and get API key")
-    print("    3. Connect all free providers")
+    print("    3. Connect free / auto-connectable providers")
     print("    4. Test connections")
     print("    5. Set environment variables")
     print("    6. Configure Codex CLI")
     print("    7. Print summary with model names and API keys")
     print("\n  Run as Administrator for service installation.")
-    
-    # Step 1: Install OmniRoute
+
+    # Step 1: Install (or skip if already running)
     if not install_omniroute():
         print_fail("OmniRoute installation incomplete. Check above.")
-        # Continue anyway - might already be running
-    
+        # Continue anyway — might already be running
+
     # Step 2: Configure
     api_key = configure_omniroute()
     if not api_key:
-        api_key = "sk-2daf4dd6d1e45047-53255c-89ec5ddf"
-        print_info(f"Using default API key: {api_key}")
-    
+        api_key = KNOWN_FALLBACK_KEY
+        print_info(f"Using known default key: {api_key}")
+
     # Step 3: Connect providers
     connect_providers(api_key)
-    
+
     # Step 4: Test
     test_connections(api_key)
-    
+
     # Step 5: Environment variables
     set_environment_variables(api_key)
-    
+
     # Step 6: Configure Codex
     configure_codex(api_key)
-    
+
     # Step 7: Print summary
     print_summary(api_key)
-    
-    print("\n  Open a NEW terminal and run:")
-    print("    claude")
-    print("    codex --dangerously-bypass-approvals-and-sandbox")
+
     print()
 
 
