@@ -35,6 +35,9 @@ ROLE_PROMPTS = {
         "cwd, so use relative paths ('python app.py', not 'python /workspace/app.py'). "
         "Never start a background server; prefer in-process assertions with python -c and "
         "Flask's test_client or urllib against an already-started test harness. "
+        "Available packages in acceptance criteria: flask (with jinja2), pytest, and "
+        "Python stdlib only. Do NOT reference wtforms, flask-wtf, sqlalchemy, requests, "
+        "or any package not listed. "
         "Example valid criteria: 'python -c \"from app import app; c = app.test_client(); "
         "r = c.get(\'/\'); assert r.status_code == 200\"'."
     ),
@@ -43,7 +46,10 @@ ROLE_PROMPTS = {
         "ALWAYS respond with valid JSON in this exact format: "
         '{"files": {"relative/path.py": "file content string", ...}}. '
         "All paths must be relative (no absolute paths, no '..'). "
-        "Do NOT use markdown. Output ONLY a JSON object."
+        "Available packages: only flask (with jinja2), pytest, and Python stdlib. "
+        "Do NOT import flask-wtf, wtforms, sqlalchemy, requests, or any package "
+        "not listed here. Use Python stdlib (html, json, urllib, etc.) for anything "
+        "not covered by flask. Do NOT use markdown. Output ONLY a JSON object."
     ),
     "BUILDER_FINAL": (
         "You are BUILDER_FINAL. Review drafts and produce the final implementation. "
@@ -51,7 +57,10 @@ ROLE_PROMPTS = {
         '{"files": {"relative/path.py": "file content string", ...}}. '
         "All paths must be relative (no absolute paths, no '..'). "
         "Include all necessary files for the application to run. "
-        "Do NOT use markdown. Output ONLY a JSON object."
+        "Available packages: only flask (with jinja2), pytest, and Python stdlib. "
+        "Do NOT import flask-wtf, wtforms, sqlalchemy, requests, or any package "
+        "not listed here. Use Python stdlib (html, json, urllib, etc.) for anything "
+        "not covered by flask. Do NOT use markdown. Output ONLY a JSON object."
     ),
     "BEHOLDER": (
         "You are BEHOLDER. Independently evaluate evidence and verify completion claims. "
@@ -66,6 +75,8 @@ ROLE_PROMPTS = {
         '{"tests": [{"id": "string", "command": "shell command to run", '
         '"requirement_id": "string linking to a requirement", "assertions": ["list of expected behavioral outcomes"]}]}. '
         "Commands must be runnable with: python, py, node, or npx. "
+        "Available packages: flask (with jinja2), pytest, and Python stdlib only. "
+        "Do NOT use wtforms, flask-wtf, sqlalchemy, requests, or any package not listed. "
         # Coverage-of-enumerated-flows gate: the QA floor gate requires every
         # flow id from the requirements to be covered by at least one
         # substantive test (and assertions must contain behavioral markers
