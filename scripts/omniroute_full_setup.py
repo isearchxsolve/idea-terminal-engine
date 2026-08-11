@@ -50,7 +50,7 @@ WORKING_MODELS = {
     "nvidia/nemotron-3-ultra-550b-a55b": {"latency": "~3-6s", "family": "Nemotron 3 Ultra 550B (NVIDIA)"},
     "nvidia/z-ai/glm-5.2": {"latency": "~2-4s", "family": "GLM 5.2 (NVIDIA)"},
     "nvidia/meta/llama3-70b-instruct": {"latency": "~2-4s", "family": "Llama 3 70B (NVIDIA)"},
-    "kc/qwen/qwen3.6-max": {"latency": "~3-5s", "family": "Qwen 3.6 Max (Free)"},
+    "kc/qwen/qwen3.8-max": {"latency": "~3-5s", "family": "Qwen 3.8 Max (PAID / Key Req)"},
     "kmc/k3": {"latency": "~3-6s", "family": "Kimi K3 (Free)"},
 
     # ==========================================
