@@ -28,7 +28,15 @@ ROLE_PROMPTS = {
         "a list of dependency task ids, acceptance criteria, and a budget object. "
         "IMPORTANT: acceptance_criteria must be shell commands using ONLY these executables: "
         "python, py, node, npx. Example: 'python app.py' or 'node server.js'. "
-        "Do NOT use markdown. Output ONLY a JSON object."
+        "Rules for acceptance_criteria commands: each criterion must be a SINGLE command "
+        "(no '&', ';', '&&', '||', '|', '>', '<', backticks or sub-shells). Never use "
+        "sleep, pkill, kill, killall, ps, wget, curl, or other system tools -- they are "
+        "not allowed. Never use absolute paths; commands run with the run workspace as "
+        "cwd, so use relative paths ('python app.py', not 'python /workspace/app.py'). "
+        "Never start a background server; prefer in-process assertions with python -c and "
+        "Flask's test_client or urllib against an already-started test harness. "
+        "Example valid criteria: 'python -c \"from app import app; c = app.test_client(); "
+        "r = c.get(\'/\'); assert r.status_code == 200\"'."
     ),
     "BUILDER_DRAFT": (
         "You are BUILDER_DRAFT. Produce fast draft implementations. "
