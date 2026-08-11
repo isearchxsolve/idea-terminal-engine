@@ -39,30 +39,32 @@ KNOWN_FALLBACK_KEY = "sk-2daf4dd6d1e45047-53255c-89ec5ddf"
 
 # Working models (updated Aug 2026 - 51 Free Models Discovered)
 WORKING_MODELS = {
-    # 5+ Kilocode (kc) models (Server OAuth covered - completely free)
+    # ==========================================
+    # FRONTIER CLASS (Most Powerful - Highest Intelligence)
+    # ==========================================
     "kc/anthropic/claude-opus-4.7": {"latency": "~4-7s", "family": "Claude Opus 4.7 (Free)"},
-    "kc/anthropic/claude-sonnet-4.6": {"latency": "~2-5s", "family": "Claude Sonnet 4.6 (Free)"},
     "kc/openai/gpt-5.5": {"latency": "~3-6s", "family": "GPT-5.5 (Free)"},
-    "kc/openai/gpt-5.4-mini": {"latency": "~1-3s", "family": "GPT-5.4 Mini (Free)"},
-    "kc/qwen/qwen3.6-max": {"latency": "~3-5s", "family": "Qwen 3.6 Max (Free)"},
-
-    # Kimi (kmc) (Server OAuth covered)
-    "kmc/k3": {"latency": "~3-6s", "family": "Kimi K3 (Free)"},
-
-    # 20+ NVIDIA free models (Massive rate limits)
-    "nvidia/nemotron-3-ultra-550b-a55b": {"latency": "~3-6s", "family": "Nemotron 3 Ultra (NVIDIA)"},
+    "kc/anthropic/claude-sonnet-4.6": {"latency": "~2-5s", "family": "Claude Sonnet 4.6 (Free)"},
+    "agy/claude-sonnet-4-6": {"latency": "~3-5s", "family": "Claude Sonnet 4.6 (Antigravity)"},
+    "antigravity/claude-sonnet-4-6": {"latency": "~3-5s", "family": "Claude Sonnet 4.6 (Antigravity)"},
+    "nvidia/nemotron-3-ultra-550b-a55b": {"latency": "~3-6s", "family": "Nemotron 3 Ultra 550B (NVIDIA)"},
     "nvidia/z-ai/glm-5.2": {"latency": "~2-4s", "family": "GLM 5.2 (NVIDIA)"},
     "nvidia/meta/llama3-70b-instruct": {"latency": "~2-4s", "family": "Llama 3 70B (NVIDIA)"},
-    "nvidia/mistralai/mistral-nemotron-12b": {"latency": "~1-3s", "family": "Mistral Nemotron (NVIDIA)"},
+    "kc/qwen/qwen3.6-max": {"latency": "~3-5s", "family": "Qwen 3.6 Max (Free)"},
+    "kmc/k3": {"latency": "~3-6s", "family": "Kimi K3 (Free)"},
+
+    # ==========================================
+    # FAST / EFFICIENT CLASS (Low Latency / High Volume)
+    # ==========================================
+    "kc/openai/gpt-5.4-mini": {"latency": "~1-3s", "family": "GPT-5.4 Mini (Free)"},
+    "agy/gemini-3.6-flash-high": {"latency": "~2-4s", "family": "Gemini 3.6 Flash (Antigravity)"},
+    "nvidia/mistralai/mistral-nemotron-12b": {"latency": "~1-3s", "family": "Mistral Nemotron 12B (NVIDIA)"},
     "nvidia/step/step-3.7-instruct": {"latency": "~2-4s", "family": "Step 3.7 (NVIDIA)"},
     "nvidia/gpt-oss-20b": {"latency": "~2-4s", "family": "GPT-OSS 20B (NVIDIA)"},
     
-    # 25+ Antigravity models (agy / antigravity)
-    "agy/claude-sonnet-4-6": {"latency": "~3-5s", "family": "Claude (Antigravity)"},
-    "agy/gemini-3.6-flash-high": {"latency": "~2-4s", "family": "Gemini (Antigravity)"},
-    "antigravity/claude-sonnet-4-6": {"latency": "~3-5s", "family": "Claude (Antigravity)"},
-
-    # Auto-routing fallback models
+    # ==========================================
+    # AUTO-ROUTERS (Fallback clusters)
+    # ==========================================
     "auto/coding:free": {"latency": "varies", "family": "Auto Combo (Free)"},
     "auto/best-coding": {"latency": "varies", "family": "Auto Best Coding"},
 }
