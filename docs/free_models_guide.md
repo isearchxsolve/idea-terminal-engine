@@ -1,18 +1,25 @@
 # OmniRoute Free Models Guide
 
-### Final Free Model List (Recommended)
-
-Use these in Zed (and other tools) — **no paid subscriptions required**:
+### Truly Free Models (Unlimited or generous free tier)
 
 | Priority | Model ID                        | Provider   | Notes                          |
 |----------|---------------------------------|------------|--------------------------------|
-| 1        | `if/kimi-k3`                    | Qoder      | Best free coding model right now |
-| 2        | `if/qwen3.8-max-preview`        | Qoder      | Strong free general + coding   |
-| 3        | `if/qwen3.7-max`                | Qoder      | Solid free alternative         |
-| 4        | `auto/coding:free`              | OmniRoute  | Auto-picks healthy free models |
-| 5        | `auto/best-coding`              | OmniRoute  | Broader free pool              |
-| 6        | `agy/gemini-2.5-flash`          | Antigravity| Fast free fallback (if healthy)|
-| 7        | `agy/gemini-3.6-flash-high`     | Antigravity| Another fast free option       |
+| 1        | `auto/coding:free`              | OmniRoute  | Auto-picks healthy free models |
+| 2        | `auto/best-coding`              | OmniRoute  | Broader free pool              |
+| 3        | `agy/gemini-2.5-flash`          | Antigravity| Fast free fallback (if healthy)|
+| 4        | `agy/gemini-3.6-flash-high`     | Antigravity| Another fast free option       |
+
+---
+
+### Trial / Credit-Based Models
+
+These models are free to start, but **run on a limited credit system**. Once your initial credits are exhausted, you will drop to a heavily restricted daily allowance unless you subscribe.
+
+| Model ID                        | Provider   | Notes                          |
+|---------------------------------|------------|--------------------------------|
+| `if/kimi-k3`                    | Qoder      | Premium coding model (consumes credits fast) |
+| `if/qwen3.8-max-preview`        | Qoder      | Premium general + coding (consumes credits)  |
+| `if/qwen3.7-max`                | Qoder      | Solid alternative (consumes credits)         |
 
 ---
 
