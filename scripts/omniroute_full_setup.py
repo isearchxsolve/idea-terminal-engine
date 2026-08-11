@@ -37,30 +37,33 @@ OMNIROUTE_SERVICE_NAME = "OmniRoute"
 
 KNOWN_FALLBACK_KEY = "sk-2daf4dd6d1e45047-53255c-89ec5ddf"
 
-# Working models (updated Aug 2026)
+# Working models (updated Aug 2026 - 51 Free Models Discovered)
 WORKING_MODELS = {
-    # Claude family
-    "cc/claude-opus-4-8": {"latency": "~4-7s", "family": "Claude Opus 4.8"},
-    "cc/claude-opus-4-7": {"latency": "~4-6s", "family": "Claude Opus 4.7"},
-    "cc/claude-sonnet-4-6": {"latency": "~2-4s", "family": "Claude Sonnet 4.6"},
-    "claude-fable-5": {"latency": "~4-7s", "family": "Claude Fable 5"},
+    # 5+ Kilocode (kc) models (Server OAuth covered - completely free)
+    "kc/anthropic/claude-opus-4.7": {"latency": "~4-7s", "family": "Claude Opus 4.7 (Free)"},
+    "kc/anthropic/claude-sonnet-4.6": {"latency": "~2-5s", "family": "Claude Sonnet 4.6 (Free)"},
+    "kc/openai/gpt-5.5": {"latency": "~3-6s", "family": "GPT-5.5 (Free)"},
+    "kc/openai/gpt-5.4-mini": {"latency": "~1-3s", "family": "GPT-5.4 Mini (Free)"},
+    "kc/qwen/qwen3.6-max": {"latency": "~3-5s", "family": "Qwen 3.6 Max (Free)"},
 
-    # GPT-5.6 family
-    "gh/gpt-5.6-sol": {"latency": "~3-6s", "family": "GPT-5.6 Sol"},
-    "gh/gpt-5.6-terra": {"latency": "~3-5s", "family": "GPT-5.6 Terra"},
-    "gh/gpt-5.6-luna": {"latency": "~2-4s", "family": "GPT-5.6 Luna"},
-    "cx/gpt-5.5": {"latency": "~3-5s", "family": "GPT-5.5 (Codex)"},
+    # Kimi (kmc) (Server OAuth covered)
+    "kmc/k3": {"latency": "~3-6s", "family": "Kimi K3 (Free)"},
 
-    # Kimi & Qwen (often free via Qoder)
-    "if/kimi-k3": {"latency": "~3-6s", "family": "Kimi K3"},
-    "if/qwen3.8-max-preview": {"latency": "~3-6s", "family": "Qwen 3.8 Max"},
-    "if/qwen3.7-max": {"latency": "~3-5s", "family": "Qwen 3.7 Max"},
-
-    # Other strong free / cheap options
+    # 20+ NVIDIA free models (Massive rate limits)
+    "nvidia/nemotron-3-ultra-550b-a55b": {"latency": "~3-6s", "family": "Nemotron 3 Ultra (NVIDIA)"},
+    "nvidia/z-ai/glm-5.2": {"latency": "~2-4s", "family": "GLM 5.2 (NVIDIA)"},
+    "nvidia/meta/llama3-70b-instruct": {"latency": "~2-4s", "family": "Llama 3 70B (NVIDIA)"},
+    "nvidia/mistralai/mistral-nemotron-12b": {"latency": "~1-3s", "family": "Mistral Nemotron (NVIDIA)"},
+    "nvidia/step/step-3.7-instruct": {"latency": "~2-4s", "family": "Step 3.7 (NVIDIA)"},
+    "nvidia/gpt-oss-20b": {"latency": "~2-4s", "family": "GPT-OSS 20B (NVIDIA)"},
+    
+    # 25+ Antigravity models (agy / antigravity)
     "agy/claude-sonnet-4-6": {"latency": "~3-5s", "family": "Claude (Antigravity)"},
-    "agy/gemini-3.6-flash-high": {"latency": "~2-4s", "family": "Gemini"},
-    "nvidia/z-ai/glm-5.2": {"latency": "~4-6s", "family": "GLM 5.2"},
-    "auto/coding:free": {"latency": "~3-5s", "family": "Auto Combo (Free)"},
+    "agy/gemini-3.6-flash-high": {"latency": "~2-4s", "family": "Gemini (Antigravity)"},
+    "antigravity/claude-sonnet-4-6": {"latency": "~3-5s", "family": "Claude (Antigravity)"},
+
+    # Auto-routing fallback models
+    "auto/coding:free": {"latency": "varies", "family": "Auto Combo (Free)"},
     "auto/best-coding": {"latency": "varies", "family": "Auto Best Coding"},
 }
 
@@ -443,7 +446,7 @@ def connect_providers(api_key):
     for p, url in PROVIDERS_NEEDING_REAL_KEY:
         print(f"    {p:<14}  {url}")
     print()
-    print_info("Dashboard → Providers:  http://localhost:20128/dashboard/providers")
+    print_info("Dashboard -> Providers:  http://localhost:20128/dashboard/providers")
     print()
     return total_ok > 0
 
@@ -501,4 +504,111 @@ def configure_codex(api_key):
             content = f.read()
         content = content.replace('model = "gpt-5.6-luna"', 'model = "if/kimi-k3"')
         content = content.replace('model = "gpt-5.6-sol"', 'model = "if/kimi-k3"')
-        content = content.replace('model_provider = "litellm-nemotron"', 'model
+        content = content.replace('model_provider = "litellm-nemotron"', 'model_provider = "omniroute"')
+        content = content.replace('model_provider = "nvidia"', 'model_provider = "omniroute"')
+        content = content.replace('wire_api = "chat"', 'wire_api = "responses"')
+
+        if '[model_providers.omniroute]' not in content:
+            content += f'''
+
+[model_providers.omniroute]
+api_url = "{OMNIROUTE_URL}"
+api_key = "{api_key}"
+wire_api = "responses"
+supports_websockets = false
+requires_openai_auth = true
+'''
+
+        with open(config_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+
+        print_ok("Codex configured for OmniRoute")
+        return True
+
+    except Exception as e:
+        print_fail(f"Failed to configure Codex: {e}")
+        return False
+
+
+# === Step 7: Print Summary ===
+def print_summary(api_key):
+    print_header("SETUP COMPLETE - Summary")
+
+    print(f"""
+  OmniRoute Service: {OMNIROUTE_SERVICE_NAME}
+  Dashboard:         {OMNIROUTE_URL}/dashboard
+  Local Endpoint:    {OMNIROUTE_URL}
+  API Key:           {api_key}
+  Password:          {OMNIROUTE_PASSWORD}
+""")
+
+    print("\n  WORKING MODELS (Free + Frontier):")
+    print("  " + "-"*65)
+    for model, info in WORKING_MODELS.items():
+        print_model(model, f"{info['latency']:>8s}  {info['family']}")
+
+    print(f"""
+  ENVIRONMENT VARIABLES SET:
+    OMNIROUTE_BASE_URL = {OMNIROUTE_BASE}
+    OMNIROUTE_API_KEY  = {api_key}
+    ... and Anthropic / OpenAI mappings.
+
+  CLIENTS CONFIGURED:
+    Claude Code CLI:  claude
+    Codex CLI:        codex --dangerously-bypass-approvals-and-sandbox
+
+  NEXT STEPS:
+    1. Open dashboard -> Providers and connect:
+         - Claude Code   (for Opus 4.8 / Fable 5)
+         - Codex or GitHub Copilot  (for GPT-5.6 Sol family)
+         - Qoder         (already tried - free Kimi K3 + Qwen 3.8 Max)
+    2. Open a NEW terminal and run:
+         claude
+         codex --dangerously-bypass-approvals-and-sandbox
+""")
+
+
+def main():
+    print_header("OmniRoute Complete Setup")
+    print("\n  This script will:")
+    print("    1. Install OmniRoute as Windows service (auto-start)")
+    print("       -> SKIPPED if the service is already RUNNING")
+    print("    2. Configure OmniRoute and get API key")
+    print("    3. Connect free / auto-connectable providers")
+    print("    4. Test connections")
+    print("    5. Set environment variables")
+    print("    6. Configure Codex CLI")
+    print("    7. Print summary with model names and API keys")
+    print("\n  Run as Administrator for service installation.")
+
+    # Step 1: Install (or skip if already running)
+    if not install_omniroute():
+        print_fail("OmniRoute installation incomplete. Check above.")
+        # Continue anyway - might already be running
+
+    # Step 2: Configure
+    api_key = configure_omniroute()
+    if not api_key:
+        api_key = KNOWN_FALLBACK_KEY
+        print_info(f"Using known default key: {api_key}")
+
+    # Step 3: Connect providers
+    connect_providers(api_key)
+
+    # Step 4: Test
+    test_connections(api_key)
+
+    # Step 5: Environment variables
+    set_environment_variables(api_key)
+
+    # Step 6: Configure Codex
+    configure_codex(api_key)
+
+    # Step 7: Print summary
+    print_summary(api_key)
+
+    print()
+
+
+if __name__ == "__main__":
+    main()
