@@ -79,7 +79,12 @@ def _call_once(routing, role, prompt, context, limiter, budget):
                      "Content-Type": "application/json"}, method="POST")
         with urllib.request.urlopen(req, timeout=int(inference["timeout_seconds"])) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
-        return payload["choices"][0]["message"]["content"]
+        content = payload["choices"][0]["message"]["content"]
+        # Some providers (Gemini-style, Anthropic tool-call frames) legitimately
+        # return `content: null` when the model emits only reasoning/tool blocks.
+        # Treat that as empty text so callers/_extract_json don't crash on None
+        # -- and let the fallback chain engage if the resulting JSON parse fails.
+        return content if content is not None else ""
     except urllib.error.HTTPError as exc:
         raise InferenceCallError(f"HTTP {exc.code} from {routing['model']}") from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
@@ -116,6 +121,12 @@ def call_model(role, prompt, context=None, limiter=None, budget=None):
 def _extract_json(text: str) -> str:
     """Extract a JSON object from model output that may contain extra text."""
     import re
+    # Defensive: call_model should never return None, but if it does (eg. a
+    # future provider returns content:null and we missed the guard), don't
+    # crash with AttributeError -- treat as empty so the caller raises a
+    # cleaner InferenceCallError on the JSON-decode step below.
+    if text is None:
+        text = ""
     stripped = text.strip()
     # Try direct parse first
     try:

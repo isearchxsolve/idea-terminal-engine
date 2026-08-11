@@ -97,7 +97,16 @@ def _build_task(run_dir, task, arts, limiter, budget):
     evidence_validator.validate_completion(task, evidence)  # mechanical gate
     verdict = runners.call_json("BEHOLDER", json.dumps({
         "task": task,
-        "evidence": [{k: ev[k] for k in ("command", "exit_code", "stderr")}
+        # Pass stdout too, not just (command, exit_code, stderr). The
+        # acceptance criteria frequently require a print as the success
+        # marker (eg 'print("FormSubmitHandler ok")'); if BEHOLDER can't
+        # see stdout it cannot verify the marker was emitted and will
+        # reject even on exit_code=0 + empty stderr -- driving an infinite
+        # BUILDING <-> REPAIRING cycle. The earlier code dropped stdout
+        # here only as an ad-hoc size guard; modern context windows
+        # tolerate full evidence and the verifier blind-spot the
+        # truncation created was worse.
+        "evidence": [{k: ev[k] for k in ("command", "exit_code", "stdout", "stderr")}
                      for ev in evidence]}), limiter=limiter, budget=budget)
     if not verdict.get("passed"):
         raise VerificationFailureError(

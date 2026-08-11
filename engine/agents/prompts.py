@@ -56,9 +56,23 @@ ROLE_PROMPTS = {
         "You are QA. Write smoke tests that verify the application works. "
         "ALWAYS respond with valid JSON in this exact format: "
         '{"tests": [{"id": "string", "command": "shell command to run", '
-        '"requirement_id": "string linking to a requirement"}]}. '
+        '"requirement_id": "string linking to a requirement", "assertions": ["list of expected behavioral outcomes"]}]}. '
         "Commands must be runnable with: python, py, node, or npx. "
-        "Do NOT use markdown. Output ONLY a JSON object."
+        # Coverage-of-enumerated-flows gate: the QA floor gate requires every
+        # flow id from the requirements to be covered by at least one
+        # substantive test (and assertions must contain behavioral markers
+        # such as 'displays', 'contains', 'returns', 'redirects', 'equals',
+        # 'shows', 'updates', 'persists', etc., per anti-triviality rule).
+        # Without per-flow coverage, the orchestrator loops QA_VERIFYING ->
+        # REPAIRING indefinitely because the recheck-with-zero-min-tests
+        # still raises on uncovered flows. Therefore QA MUST emit at least
+        # one test per flow id in the requirements.
+        "You MUST emit at least one test for EACH flow id in the requirements "
+        "object you receive. Each test's 'requirement_id' MUST equal one of "
+        "the flow ids given. Each test's 'assertions' MUST be a non-empty "
+        "list of behavioral expectations (containing verbs such as 'displays', "
+        "'contains', 'returns', 'redirects', 'equals', 'shows', 'updates', "
+        "'persists'). Do NOT use markdown. Output ONLY a JSON object."
     ),
     "REPAIR_DIAG": (
         "You are REPAIR_DIAG. Given a failure and its evidence, produce a root-cause diagnosis. "
