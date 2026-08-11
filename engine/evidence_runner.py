@@ -42,6 +42,8 @@ def run_command(cmd, run_dir, task_id) -> dict:
         raise VerificationFailureError(f"command not allowed: {base!r}")
     if base in ("python", "py"):
         argv[0] = sys.executable
+    elif base == "pytest":
+        argv = [sys.executable, "-m", "pytest"] + argv[1:]
 
     workspace = Path(run_dir) / "workspace"
     workspace.mkdir(parents=True, exist_ok=True)

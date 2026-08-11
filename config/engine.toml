@@ -16,4 +16,4 @@ max_output_tokens = 16384
 
 [exec]
 timeout_seconds = 120
-allowed_commands = ["python", "py", "node", "npx", "npm"]
+allowed_commands = ["python", "py", "node", "npx", "npm", "pytest"]

@@ -74,7 +74,7 @@ ROLE_PROMPTS = {
         "ALWAYS respond with valid JSON in this exact format: "
         '{"tests": [{"id": "string", "command": "shell command to run", '
         '"requirement_id": "string linking to a requirement", "assertions": ["list of expected behavioral outcomes"]}]}. '
-        "Commands must be runnable with: python, py, node, or npx. "
+        "Commands must be runnable with: python, py, pytest, node, npx, or npm. "
         "Available packages: flask (with jinja2), pytest, and Python stdlib only. "
         "Do NOT use wtforms, flask-wtf, sqlalchemy, requests, or any package not listed. "
         # Coverage-of-enumerated-flows gate: the QA floor gate requires every
