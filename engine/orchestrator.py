@@ -259,6 +259,13 @@ def step(run_dir, limiter=None, budget=None) -> str:
 
 def run_to_terminal(run_dir, max_steps: int = 100, limiter=None, budget=None):
     """Loop step() until a terminal state or the step cap. Fail closed."""
+    # Budget and limiter MUST be shared across all steps so retry counts
+    # and call counts accumulate correctly. Previously, passing budget=None
+    # caused step() to create a fresh BudgetTracker each call, meaning
+    # record_retry() never exceeded max_retries_per_task and the
+    # REPAIRING loop ran unbounded.
+    limiter = limiter or RateLimiter.from_config()
+    budget = budget or BudgetTracker.from_config()
     for _ in range(max_steps):
         state = step(run_dir, limiter=limiter, budget=budget)
         if state in ("RELEASED", "FAILED"):
