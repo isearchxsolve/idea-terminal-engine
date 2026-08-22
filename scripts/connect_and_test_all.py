@@ -2,7 +2,7 @@
 Connect remaining providers and test all connections.
 Uses short aliases discovered from the model catalog.
 """
-import requests, json, time
+import requests, json
 
 BASE = "http://localhost:20128"
 PWD = "omniroute-admin-2026"

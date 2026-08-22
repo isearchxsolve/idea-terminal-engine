@@ -120,16 +120,16 @@ print(f"RESULTS: {len(gpt_ok)} GPT OK, {len(glm_ok)} GLM OK, {len(fails)} failed
 print(f"{'='*80}")
 
 if gpt_ok:
-    print(f"\n  GPT FRONTIER MODELS (working!):")
+    print("\n  GPT FRONTIER MODELS (working!):")
     for m, src, dt, txt in sorted(gpt_ok, key=lambda x: x[2]):
         print(f"    {dt:5.1f}s  {m:45s}  [{src}]")
 
 if glm_ok:
-    print(f"\n  GLM MODELS (working!):")
+    print("\n  GLM MODELS (working!):")
     for m, src, dt, txt in sorted(glm_ok, key=lambda x: x[2]):
         print(f"    {dt:5.1f}s  {m:45s}  [{src}]")
 
 if not gpt_ok:
-    print(f"\n  GPT: None working")
+    print("\n  GPT: None working")
 if not glm_ok:
-    print(f"\n  GLM: None working")
+    print("\n  GLM: None working")

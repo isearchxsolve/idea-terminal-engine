@@ -10,9 +10,7 @@ Usage:
 Requires: playwright (pip install playwright, python -m playwright install chromium)
 """
 import time
-import json
-import sys
-from playwright.sync_api import sync_playwright, TimeoutError as PwTimeout
+from playwright.sync_api import sync_playwright
 
 DASHBOARD_URL = "http://localhost:20128"
 PASSWORD = "omniroute-admin-2026"
@@ -224,7 +222,7 @@ def main():
 
         # Step 3: Discover page structure
         print("\n[Step 3] Discovering page structure...")
-        elements = discover_page_structure(page)
+        discover_page_structure(page)
 
         # Step 4: Try to fix OpenRouter
         print("\n[Step 4] Fixing OpenRouter...")

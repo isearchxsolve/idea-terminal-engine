@@ -27,44 +27,13 @@ DEFAULTS = {
 }
 
 
-def _parse_simple_toml(text: str) -> dict:
-    """Minimal TOML subset: [section] headers and key = value scalars."""
-    out: dict = {}
-    section = out
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith("[") and line.endswith("]"):
-            section = out.setdefault(line[1:-1].strip(), {})
-            continue
-        if "=" not in line:
-            continue
-        key, _, val = line.partition("=")
-        key = key.strip()
-        val = val.strip()
-        if val.startswith('"') or val.startswith("'"):
-            val = val[1:-1]
-        elif val.startswith("[") and val.endswith("]"):
-            inner = val[1:-1].strip()
-            val = [item.strip().strip('"').strip("'")
-                   for item in inner.split(",") if item.strip()] if inner else []
-        elif val.lower() in ("true", "false"):
-            val = val.lower() == "true"
-        else:
-            try:
-                val = float(val) if "." in val else int(val)
-            except ValueError:
-                pass
-        section[key] = val
-    return out
-
+import tomllib
 
 def load_engine_config() -> dict:
     cfg = json.loads(json.dumps(DEFAULTS))  # deep copy of defaults
     path = paths.config_path("engine.toml")
     if path.exists():
-        data = _parse_simple_toml(path.read_text(encoding="utf-8"))
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
         for sect, vals in data.items():
             cfg.setdefault(sect, {}).update(vals)
     return cfg

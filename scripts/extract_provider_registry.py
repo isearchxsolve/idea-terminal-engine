@@ -106,4 +106,4 @@ for auth, pids in sorted(by_auth.items()):
 # Save
 with open("scripts/provider_registry.json", "w") as f:
     json.dump(providers, f, indent=2, sort_keys=True)
-print(f"\nSaved to scripts/provider_registry.json")
+print("\nSaved to scripts/provider_registry.json")

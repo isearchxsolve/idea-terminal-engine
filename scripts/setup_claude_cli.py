@@ -67,7 +67,7 @@ def set_env_var_unix(name, value):
                 return True
     
     with open(profile, "a") as f:
-        f.write(f"\n# OmniRoute + Claude Code CLI\n")
+        f.write("\n# OmniRoute + Claude Code CLI\n")
         f.write(line)
     print(f"  [+] Added {name} to {profile}")
     return True
@@ -79,12 +79,12 @@ def check_omniroute():
     try:
         url = BASE_URL.replace("/v1", "") + "/api/health"
         req = urllib.request.Request(url, method="GET")
-        resp = urllib.request.urlopen(req, timeout=5)
+        urllib.request.urlopen(req, timeout=5)
         print(f"  [+] OmniRoute is running at {BASE_URL.replace('/v1', '')}")
         return True
     except Exception as e:
         print(f"  [-] OmniRoute not reachable: {e}")
-        print(f"      Start OmniRoute first, or change BASE_URL in this script.")
+        print("      Start OmniRoute first, or change BASE_URL in this script.")
         return False
 
 def check_claude_cli():

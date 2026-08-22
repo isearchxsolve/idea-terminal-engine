@@ -89,7 +89,7 @@ targets = [
 ]
 
 print(f"Strategic probe: {len(targets)} model/provider combinations")
-print(f"Targeting: GPT frontier + GLM-5.2")
+print("Targeting: GPT frontier + GLM-5.2")
 print(f"{'='*80}")
 
 gpt_hits = []
@@ -135,21 +135,21 @@ print(f"RESULTS: {len(gpt_hits)} GPT models working, {len(glm_hits)} GLM models 
 print(f"{'='*80}")
 
 if gpt_hits:
-    print(f"\n  GPT MODELS (working):")
+    print("\n  GPT MODELS (working):")
     for m, src, dt, txt in sorted(gpt_hits, key=lambda x: x[2]):
         print(f"    {dt:5.1f}s  {m:40s}  [{src}]")
 else:
-    print(f"\n  GPT MODELS: NONE working")
+    print("\n  GPT MODELS: NONE working")
 
 if glm_hits:
-    print(f"\n  GLM MODELS (working):")
+    print("\n  GLM MODELS (working):")
     for m, src, dt, txt in sorted(glm_hits, key=lambda x: x[2]):
         print(f"    {dt:5.1f}s  {m:40s}  [{src}]")
 else:
-    print(f"\n  GLM MODELS: NONE working")
+    print("\n  GLM MODELS: NONE working")
 
 # Show closest failures
-print(f"\n  Closest failures (not timeout/auth):")
+print("\n  Closest failures (not timeout/auth):")
 for m, src, err, dt in fails:
     if "400" not in err and "timeout" not in err.lower():
         print(f"    {dt:5.1f}s  {m:40s}  [{src}]  {err}")

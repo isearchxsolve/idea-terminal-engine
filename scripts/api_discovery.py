@@ -94,8 +94,8 @@ try_endpoint("POST", "/api/providers/discover")
 print("\n--- Provider Connect/Enable (sample) ---")
 sample_providers = ["openrouter", "opencode", "nvidia", "agy", "kimi-coding", "cline"]
 for pid in sample_providers:
-    try_endpoint("POST", f"/api/providers/connect", {"providerId": pid, "config": {}})
-    try_endpoint("POST", f"/api/providers/enable", {"providerId": pid})
+    try_endpoint("POST", "/api/providers/connect", {"providerId": pid, "config": {}})
+    try_endpoint("POST", "/api/providers/enable", {"providerId": pid})
     try_endpoint("POST", f"/api/providers/{pid}/enable")
     try_endpoint("POST", f"/api/providers/{pid}/connect")
     try_endpoint("POST", f"/api/providers/{pid}/test")

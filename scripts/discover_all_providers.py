@@ -68,7 +68,7 @@ for js_path in js_files:
                     if item and len(item) > 2:
                         all_provider_names.add(item)
 
-    except Exception as e:
+    except Exception:
         pass
 
 print(f"\nFound {len(all_provider_names)} potential provider names:")

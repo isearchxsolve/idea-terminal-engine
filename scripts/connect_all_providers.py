@@ -2,7 +2,7 @@
 Connect ALL providers to OmniRoute via the API.
 Uses discovered provider names from model prefixes and dashboard JS.
 """
-import requests, json, time
+import requests, json
 
 BASE = "http://localhost:20128"
 PWD = "omniroute-admin-2026"

@@ -1,5 +1,5 @@
 """Test the actual ORCHESTRATOR call pattern to debug JSON extraction."""
-import json, urllib.request, sys
+import json, sys
 sys.path.insert(0, ".")
 from engine.agents.runners import call_model, _extract_json
 

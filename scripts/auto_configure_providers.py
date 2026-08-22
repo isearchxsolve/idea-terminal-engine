@@ -94,7 +94,7 @@ def phase1_api(s, cookies):
 
         # 2. Enable if disabled
         if not active:
-            print(f"      [>] Enabling...")
+            print("      [>] Enabling...")
             status, resp = api_put(s, cookies, f"/api/providers/{cid}", {"isActive": True})
             print(f"      [{'OK' if status == 200 else 'FAIL'}] {status} {str(resp)[:100]}")
             if status == 200:
@@ -102,7 +102,7 @@ def phase1_api(s, cookies):
 
         # 3. Refresh expired OAuth tokens
         if expired and auth_type == "oauth":
-            print(f"      [>] Refreshing expired token...")
+            print("      [>] Refreshing expired token...")
             status, resp = api_post(s, cookies, f"/api/providers/{cid}/refresh")
             print(f"      [{'OK' if status == 200 else 'FAIL'}] {status} {str(resp)[:100]}")
             if status == 200:
@@ -110,7 +110,7 @@ def phase1_api(s, cookies):
             results["expired"].append(name)
 
         # 4. Test connection
-        print(f"      [>] Testing...")
+        print("      [>] Testing...")
         status, resp = api_post(s, cookies, f"/api/providers/{cid}/test")
         try:
             test_data = json.loads(resp) if isinstance(resp, str) else resp

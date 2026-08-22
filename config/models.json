@@ -3,7 +3,7 @@
     "omniroute": {
       "base_url_env": "OMNIROUTE_BASE_URL",
       "api_key_env": "OMNIROUTE_API_KEY",
-      "default_base_url": "http://localhost:20128/v1"
+      "default_base_url": "http://127.0.0.1:20128/v1"
     },
     "nim": {
       "base_url_env": "NIM_BASE_URL",
@@ -13,16 +13,16 @@
   },
   "routing_rule": "OmniRoute is the primary adapter. Claude (agy/antigravity) for reasoning. Gemini for speed. GLM-5.2 (nvidia) for diversity. GPT via cx/ (codex, rate-limited). Fallback chains for resilience.",
   "roles": {
-    "ORCHESTRATOR":  {"provider": "omniroute", "model": "agy/claude-opus-4-6-thinking", "fallback": [{"provider": "omniroute", "model": "antigravity/claude-opus-4-6-thinking"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]},
-    "BLUEPRINT":     {"provider": "omniroute", "model": "antigravity/claude-sonnet-4-6", "fallback": [{"provider": "omniroute", "model": "agy/claude-sonnet-4-6"}, {"provider": "omniroute", "model": "cx/gpt-5.6-sol"}]},
-    "PLAN":          {"provider": "omniroute", "model": "antigravity/claude-sonnet-4-6", "fallback": [{"provider": "omniroute", "model": "agy/claude-sonnet-4-6"}, {"provider": "omniroute", "model": "cx/gpt-5.6-sol"}]},
-    "BUILDER_DRAFT": {"provider": "omniroute", "model": "antigravity/gemini-3.6-flash-high", "fallback": [{"provider": "omniroute", "model": "agy/gemini-3.6-flash-high"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]},
-    "BUILDER_FINAL": {"provider": "omniroute", "model": "antigravity/claude-sonnet-4-6", "fallback": [{"provider": "omniroute", "model": "agy/claude-sonnet-4-6"}, {"provider": "omniroute", "model": "cx/gpt-5.6-sol"}]},
-    "BEHOLDER":      {"provider": "omniroute", "model": "antigravity/claude-opus-4-6-thinking", "fallback": [{"provider": "omniroute", "model": "agy/claude-opus-4-6-thinking"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]},
-    "QA":            {"provider": "omniroute", "model": "antigravity/gemini-3.6-flash-high", "fallback": [{"provider": "omniroute", "model": "agy/gemini-3.6-flash-high"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]},
-    "REPAIR_DIAG":   {"provider": "omniroute", "model": "agy/claude-opus-4-6-thinking", "fallback": [{"provider": "omniroute", "model": "antigravity/claude-opus-4-6-thinking"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]},
-    "REPAIR_APPLY":  {"provider": "omniroute", "model": "antigravity/claude-sonnet-4-6", "fallback": [{"provider": "omniroute", "model": "agy/claude-sonnet-4-6"}, {"provider": "omniroute", "model": "cx/gpt-5.6-sol"}]},
-    "RELEASE":       {"provider": "omniroute", "model": "agy/claude-opus-4-6-thinking", "fallback": [{"provider": "omniroute", "model": "antigravity/claude-opus-4-6-thinking"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]}
+    "ORCHESTRATOR":  {"provider": "omniroute", "model": "auto/best-reasoning", "fallback": [{"provider": "omniroute", "model": "auto/pro-reasoning"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]},
+    "BLUEPRINT":     {"provider": "omniroute", "model": "auto/best-coding", "fallback": [{"provider": "omniroute", "model": "auto/pro-coding"}, {"provider": "omniroute", "model": "frontier"}]},
+    "PLAN":          {"provider": "omniroute", "model": "auto/best-coding", "fallback": [{"provider": "omniroute", "model": "auto/pro-coding"}, {"provider": "omniroute", "model": "frontier"}]},
+    "BUILDER_DRAFT": {"provider": "omniroute", "model": "auto/best-coding", "fallback": [{"provider": "omniroute", "model": "auto/pro-coding"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]},
+    "BUILDER_FINAL": {"provider": "omniroute", "model": "auto/best-coding", "fallback": [{"provider": "omniroute", "model": "auto/pro-coding"}, {"provider": "omniroute", "model": "frontier"}]},
+    "BEHOLDER":      {"provider": "omniroute", "model": "auto/best-reasoning", "fallback": [{"provider": "omniroute", "model": "auto/pro-reasoning"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]},
+    "QA":            {"provider": "omniroute", "model": "auto/best-coding", "fallback": [{"provider": "omniroute", "model": "auto/pro-coding"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]},
+    "REPAIR_DIAG":   {"provider": "omniroute", "model": "auto/best-reasoning", "fallback": [{"provider": "omniroute", "model": "auto/pro-reasoning"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]},
+    "REPAIR_APPLY":  {"provider": "omniroute", "model": "auto/best-coding", "fallback": [{"provider": "omniroute", "model": "auto/pro-coding"}, {"provider": "omniroute", "model": "frontier"}]},
+    "RELEASE":       {"provider": "omniroute", "model": "auto/best-reasoning", "fallback": [{"provider": "omniroute", "model": "auto/pro-reasoning"}, {"provider": "omniroute", "model": "nvidia/z-ai/glm-5.2"}]}
   },
   "verified_working": {
     "timestamp": "2026-08-11",

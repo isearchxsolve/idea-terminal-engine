@@ -53,4 +53,4 @@ with open("scripts/all_model_providers.json", "w") as f:
         "connected": sorted(connected),
         "unconnected": sorted(unconnected)
     }, f, indent=2)
-print(f"\nSaved to scripts/all_model_providers.json")
+print("\nSaved to scripts/all_model_providers.json")

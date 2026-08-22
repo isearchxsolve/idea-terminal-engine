@@ -4,7 +4,6 @@ OmniRoute Provider Automation v3
 Uses URL-based navigation + robust element detection.
 """
 import time
-import json
 from playwright.sync_api import sync_playwright
 
 DASHBOARD_URL = "http://localhost:20128"

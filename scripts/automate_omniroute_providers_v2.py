@@ -9,7 +9,6 @@ Usage:
     (Use the system Python that has playwright installed)
 """
 import time
-import json
 from playwright.sync_api import sync_playwright
 
 DASHBOARD_URL = "http://localhost:20128"

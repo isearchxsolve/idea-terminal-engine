@@ -51,7 +51,7 @@ def search_navigate(page, term):
             print(f"  [+] Submitted search for: {term}")
             return True
 
-    print(f"  [-] Search input not found")
+    print("  [-] Search input not found")
     return False
 
 
@@ -70,7 +70,7 @@ def expand_sidebar(page):
         except Exception:
             pass
     w(2)
-    print(f"  [+] Sidebar expanded")
+    print("  [+] Sidebar expanded")
 
 
 def main():
@@ -111,7 +111,7 @@ def main():
                     links.nth(i).click()
                     w(3)
                     providers_link_found = True
-                    print(f"  [+] Clicked Providers link")
+                    print("  [+] Clicked Providers link")
                     break
             except Exception:
                 continue
@@ -186,7 +186,7 @@ def main():
                     links.nth(i).click()
                     w(3)
                     or_found = True
-                    print(f"  [+] Clicked OpenRouter")
+                    print("  [+] Clicked OpenRouter")
                     snap(page, "04_openrouter")
 
                     # Dump the detail view

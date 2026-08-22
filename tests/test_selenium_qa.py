@@ -11,7 +11,6 @@ Coverage target: 200+ collectible test cases via direct functions and
 """
 
 import sys
-import json
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))

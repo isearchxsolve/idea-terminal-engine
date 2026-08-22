@@ -1,5 +1,5 @@
 """Comprehensive model probe: tests one representative model per provider family."""
-import json, urllib.request, urllib.error, time, sys
+import json, urllib.request, urllib.error, time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 secrets = json.loads(open("config/secrets.json").read())

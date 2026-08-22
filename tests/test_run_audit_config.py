@@ -456,7 +456,7 @@ def test_audit_log_preserves_order(tmp_path):
 def test_audit_log_first_line_not_overwritten(tmp_path):
     run_dir = tmp_path / "r"
     run_dir.mkdir()
-    e1 = audit_log(run_dir, "original")
+    audit_log(run_dir, "original")
     audit_log(run_dir, "newer")
     first_line = (run_dir / "logs" / "audit.jsonl").read_text().splitlines()[0]
     assert json.loads(first_line)["event"] == "original"

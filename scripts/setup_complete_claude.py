@@ -15,13 +15,10 @@ Usage:
 Works on: Local Windows, Cloud Desktop, VM
 """
 import os
-import sys
 import json
 import subprocess
 import urllib.request
 import urllib.error
-import tempfile
-import time
 
 # === Configuration ===
 OMNIROUTE_URL = "http://localhost:20128"

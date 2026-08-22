@@ -26,24 +26,37 @@ def _now() -> str:
 
 def run_command(cmd, run_dir, task_id) -> dict:
     exec_cfg = cfg.load_engine_config().get("exec", {})
-    allowed = exec_cfg.get("allowed_commands", ["python", "py", "node", "npx"])
+    allowed = exec_cfg.get("allowed_commands", ["python", "py", "node", "npx", "npm", "pytest"])
     timeout = int(exec_cfg.get("timeout_seconds", 120))
 
     # posix split with escapes disabled: keeps Windows backslash paths intact
     # while still honoring quotes around arguments.
-    lex = shlex.shlex(cmd, posix=True)
-    lex.whitespace_split = True
-    lex.escape = ""
-    argv = list(lex)
+    try:
+        lex = shlex.shlex(str(cmd), posix=True)
+        lex.whitespace_split = True
+        lex.escape = ""
+        argv = list(lex)
+    except Exception as exc:
+        raise VerificationFailureError(f"invalid command syntax: {exc}")
     if not argv:
         raise VerificationFailureError("empty command")
     base = os.path.basename(argv[0]).replace(".exe", "")
     if base not in allowed:
         raise VerificationFailureError(f"command not allowed: {base!r}")
+        
+    # Prevent arbitrary code execution via direct evaluation flags
+    if base in ("python", "py", "node") and any(arg in ("-c", "-e", "--eval") for arg in argv):
+        raise VerificationFailureError(f"Direct code evaluation flags are blocked for security: {cmd!r}")
+        
     if base in ("python", "py"):
         argv[0] = sys.executable
     elif base == "pytest":
         argv = [sys.executable, "-m", "pytest"] + argv[1:]
+    else:
+        import shutil
+        resolved = shutil.which(argv[0])
+        if resolved:
+            argv[0] = resolved
 
     workspace = Path(run_dir) / "workspace"
     workspace.mkdir(parents=True, exist_ok=True)

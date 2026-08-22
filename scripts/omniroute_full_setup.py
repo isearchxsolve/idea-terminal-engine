@@ -17,14 +17,12 @@ Usage:
 Run as Administrator for Windows service installation.
 """
 import os
-import sys
 import json
 import time
 import secrets
 import subprocess
 import urllib.request
 import urllib.error
-import tempfile
 import shutil
 import glob
 
