@@ -1,6 +1,5 @@
 """Orchestrator loop tests with canned responders (zero live inference)."""
 import json
-import sys
 
 import pytest
 
@@ -10,8 +9,16 @@ from engine.agents.runners import InferenceCallError
 from engine.pacing.budget import BudgetTracker
 from engine.pacing.limiter import RateLimiter
 
-OK_CMD = f"{sys.executable} -c \"print('ok')\""
-BAD_CMD = f"{sys.executable} -c \"import sys; sys.exit(1)\""
+# The hardened evidence_runner only executes whitelisted executables and
+# blocks direct evaluation flags (-c/-e/--eval). Canned acceptance/QA
+# commands therefore run script files that the canned BUILDER writes into
+# the run workspace (commands execute with cwd=<run>/workspace).
+OK_CMD = "python check.py"
+BAD_CMD = "python fail_check.py"
+BAD_FILES = {
+    "app.py": "print('hi')",
+    "fail_check.py": "import sys; sys.exit(1)",
+}
 
 
 def fast_limiter():
@@ -33,8 +40,10 @@ def make_canned(acceptance=OK_CMD, beholder_passed=True,
         "PLAN": {"tasks": [{"id": "T1", "type": "build", "dependencies": [],
                             "acceptance_criteria": [acceptance],
                             "budget": {}}]},
-        "BUILDER_DRAFT": {"files": {"app.py": "print('hi')"}},
-        "BUILDER_FINAL": {"files": final_files or {"app.py": "print('hi')"}},
+        "BUILDER_DRAFT": {"files": {"app.py": "print('hi')",
+                                    "check.py": "print('ok')"}},
+        "BUILDER_FINAL": {"files": final_files or
+                          {"app.py": "print('hi')", "check.py": "print('ok')"}},
         "BEHOLDER": {"passed": beholder_passed},
         "QA": {"tests": [{"id": "q1", "requirement_id": "F1",
                           "assertions": ["displays the message"],
@@ -64,7 +73,9 @@ def test_happy_path_to_released(tmp_path, monkeypatch):
 
 
 def test_repair_budget_exhaustion_fails_closed(tmp_path, monkeypatch):
-    monkeypatch.setattr(runners, "call_model", make_canned(acceptance=BAD_CMD))
+    monkeypatch.setattr(
+        runners, "call_model",
+        make_canned(acceptance=BAD_CMD, final_files=BAD_FILES))
     rd = runmod.create_run("c", "r2", "Build an echo app", clients_base=tmp_path)
     state = orchestrator.run_to_terminal(
         rd, max_steps=20, limiter=fast_limiter(),

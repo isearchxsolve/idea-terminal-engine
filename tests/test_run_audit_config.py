@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import sys
+import tomllib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -14,7 +15,7 @@ import pytest
 
 import engine.paths as paths
 from engine.audit import log as audit_log
-from engine.config import DEFAULTS, _parse_simple_toml, load_engine_config
+from engine.config import DEFAULTS, load_engine_config
 from engine.run import RUN_SUBDIRS, create_run, load_state
 
 # ---------------------------------------------------------------------------
@@ -29,6 +30,13 @@ def _make_run(tmp_path, client_id="acme", run_id="run-001", text="hello idea"):
         intake_source=text,
         clients_base=str(tmp_path),
     )
+
+
+def _load_toml(tmp_path, monkeypatch, text):
+    """Write a TOML snippet as engine.toml into an isolated CONFIG_DIR and load it."""
+    (tmp_path / "engine.toml").write_text(text, encoding="utf-8")
+    monkeypatch.setattr(paths, "CONFIG_DIR", tmp_path)
+    return load_engine_config()
 
 
 # ===========================================================================
@@ -575,121 +583,122 @@ def test_load_engine_config_section_is_dict(section):
 
 
 # ---------------------------------------------------------------------------
-# 3-12. _parse_simple_toml
+# 3-12. TOML parsing via stdlib tomllib (through load_engine_config)
 # ---------------------------------------------------------------------------
 
-def test_parse_toml_section_header():
-    result = _parse_simple_toml("[mysection]\nkey = 1")
+def test_parse_toml_section_header(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, "[mysection]\nkey = 1")
     assert "mysection" in result
 
 
-def test_parse_toml_integer_value():
-    result = _parse_simple_toml("[s]\ncount = 42")
+def test_parse_toml_integer_value(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, "[s]\ncount = 42")
     assert result["s"]["count"] == 42
 
 
-def test_parse_toml_float_value():
-    result = _parse_simple_toml("[s]\nrate = 1.5")
+def test_parse_toml_float_value(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, "[s]\nrate = 1.5")
     assert result["s"]["rate"] == pytest.approx(1.5)
 
 
-def test_parse_toml_double_quoted_string():
-    result = _parse_simple_toml('[s]\nname = "hello"')
+def test_parse_toml_double_quoted_string(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, '[s]\nname = "hello"')
     assert result["s"]["name"] == "hello"
 
 
-def test_parse_toml_single_quoted_string():
-    result = _parse_simple_toml("[s]\nname = 'world'")
+def test_parse_toml_single_quoted_string(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, "[s]\nname = 'world'")
     assert result["s"]["name"] == "world"
 
 
-def test_parse_toml_boolean_true():
-    result = _parse_simple_toml("[s]\nflag = true")
+def test_parse_toml_boolean_true(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, "[s]\nflag = true")
     assert result["s"]["flag"] is True
 
 
-def test_parse_toml_boolean_false():
-    result = _parse_simple_toml("[s]\nflag = false")
+def test_parse_toml_boolean_false(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, "[s]\nflag = false")
     assert result["s"]["flag"] is False
 
 
-def test_parse_toml_boolean_uppercase_true():
-    result = _parse_simple_toml("[s]\nflag = True")
-    assert result["s"]["flag"] is True
+def test_parse_toml_rejects_uppercase_boolean(tmp_path, monkeypatch):
+    # TOML booleans are lowercase only; `True` is invalid syntax (fail closed)
+    with pytest.raises(tomllib.TOMLDecodeError):
+        _load_toml(tmp_path, monkeypatch, "[s]\nflag = True")
 
 
-def test_parse_toml_list_of_strings():
-    result = _parse_simple_toml('[s]\ncmds = ["python", "node"]')
+def test_parse_toml_list_of_strings(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, '[s]\ncmds = ["python", "node"]')
     assert result["s"]["cmds"] == ["python", "node"]
 
 
-def test_parse_toml_list_unquoted():
-    result = _parse_simple_toml("[s]\nitems = [a, b, c]")
-    assert result["s"]["items"] == ["a", "b", "c"]
+def test_parse_toml_rejects_unquoted_list(tmp_path, monkeypatch):
+    # TOML arrays require quoted strings; bare words are invalid syntax
+    with pytest.raises(tomllib.TOMLDecodeError):
+        _load_toml(tmp_path, monkeypatch, "[s]\nitems = [a, b, c]")
 
 
-def test_parse_toml_skips_comment_lines():
-    result = _parse_simple_toml("# this is a comment\n[s]\nkey = 1")
+def test_parse_toml_skips_comment_lines(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, "# this is a comment\n[s]\nkey = 1")
     assert "key" in result["s"]
 
 
-def test_parse_toml_skips_blank_lines():
-    result = _parse_simple_toml("\n\n[s]\n\nkey = 99\n")
+def test_parse_toml_skips_blank_lines(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, "\n\n[s]\n\nkey = 99\n")
     assert result["s"]["key"] == 99
 
 
-def test_parse_toml_multiple_sections():
+def test_parse_toml_multiple_sections(tmp_path, monkeypatch):
     text = "[a]\nx = 1\n[b]\ny = 2"
-    result = _parse_simple_toml(text)
+    result = _load_toml(tmp_path, monkeypatch, text)
     assert result["a"]["x"] == 1
     assert result["b"]["y"] == 2
 
 
-def test_parse_toml_empty_list():
-    result = _parse_simple_toml("[s]\nitems = []")
+def test_parse_toml_empty_list(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, "[s]\nitems = []")
     assert result["s"]["items"] == []
 
 
-def test_parse_toml_returns_dict():
-    assert isinstance(_parse_simple_toml(""), dict)
-
-
-def test_parse_toml_empty_string():
-    result = _parse_simple_toml("")
-    assert result == {}
-
-
-def test_parse_toml_no_section_key_ignored():
-    # Keys before any section header go to root dict
-    result = _parse_simple_toml("orphan = 1")
-    # Implementation puts them in the root section dict (section == out at start)
-    # The behavior may vary; just assert it doesn't crash
+def test_parse_toml_returns_dict(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, "[s]\nkey = 1")
     assert isinstance(result, dict)
 
 
-def test_parse_toml_comment_inline_not_parsed_as_comment():
-    # Only full-line comments are skipped; values with # in them stay as-is
-    result = _parse_simple_toml('[s]\nval = "no#comment"')
+def test_parse_toml_empty_string(tmp_path, monkeypatch):
+    # An empty engine.toml contributes nothing; defaults pass through
+    result = _load_toml(tmp_path, monkeypatch, "")
+    assert result == DEFAULTS
+
+
+def test_parse_toml_inline_table(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, "[s]\npoint = {x = 1, y = 2}")
+    assert result["s"]["point"] == {"x": 1, "y": 2}
+
+
+def test_parse_toml_hash_inside_quoted_string_is_data(tmp_path, monkeypatch):
+    # '#' inside a quoted value is data, not a comment
+    result = _load_toml(tmp_path, monkeypatch, '[s]\nval = "no#comment"')
     assert result["s"]["val"] == "no#comment"
 
 
-def test_parse_toml_equals_in_value():
-    result = _parse_simple_toml('[s]\nformula = "a=b"')
+def test_parse_toml_equals_in_value(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, '[s]\nformula = "a=b"')
     assert result["s"]["formula"] == "a=b"
 
 
-def test_parse_toml_integer_zero():
-    result = _parse_simple_toml("[s]\nzero = 0")
+def test_parse_toml_integer_zero(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, "[s]\nzero = 0")
     assert result["s"]["zero"] == 0
 
 
-def test_parse_toml_negative_integer():
-    result = _parse_simple_toml("[s]\nneg = -5")
+def test_parse_toml_negative_integer(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, "[s]\nneg = -5")
     assert result["s"]["neg"] == -5
 
 
-def test_parse_toml_float_zero():
-    result = _parse_simple_toml("[s]\nzero = 0.0")
+def test_parse_toml_float_zero(tmp_path, monkeypatch):
+    result = _load_toml(tmp_path, monkeypatch, "[s]\nzero = 0.0")
     assert result["s"]["zero"] == pytest.approx(0.0)
 
 
@@ -867,7 +876,7 @@ def test_load_engine_config_two_calls_independent():
 
 
 # ---------------------------------------------------------------------------
-# _parse_simple_toml additional parametrize
+# TOML parsing via load_engine_config — additional parametrize
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("toml_text,section,key,expected", [
@@ -877,11 +886,11 @@ def test_load_engine_config_two_calls_independent():
     ("[d]\nflag = true", "d", "flag", True),
     ("[e]\nflag = false", "e", "flag", False),
     ("[f]\nval = 0", "f", "val", 0),
-    ('[g]\nname = \'test\'', "g", "name", "test"),
+    ("[g]\nname = 'test'", "g", "name", "test"),
     ("[h]\nbig = 99999", "h", "big", 99999),
 ])
-def test_parse_toml_parametrize_types(toml_text, section, key, expected):
-    result = _parse_simple_toml(toml_text)
+def test_parse_toml_parametrize_types(tmp_path, monkeypatch, toml_text, section, key, expected):
+    result = _load_toml(tmp_path, monkeypatch, toml_text)
     if isinstance(expected, float):
         assert result[section][key] == pytest.approx(expected)
     else:

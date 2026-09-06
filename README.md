@@ -4,13 +4,13 @@ An autonomous engine that drives a raw, natural-language idea to a verified, run
 
 Two outcomes are both success for the *service*, even though only one is success for the *idea*:
 
-1. The prototype works and launches as GTM v1 → client has something real, not a deck.
+1. The prototype works and is delivered as a tested, runnable GTM v1 candidate (local run) → client has something real, not a deck.
 2. The prototype or the verification process itself surfaces that the idea does not hold up technically → client learns this in weeks, not years, before spending real capital.
 
 ## Scope boundary (stated to every client)
 
-The engine verifies **TECHNICAL FEASIBILITY** and produces a **live GTM v1 surface**.
-It does not and cannot guarantee market success. "Verified" means "evidence-backed, working, live software" — not "validated business."
+The engine verifies **TECHNICAL FEASIBILITY** and produces a **tested, runnable prototype codebase (local run)**.
+It does not and cannot guarantee market success. "Verified" means "evidence-backed, working software (local run)" — not "validated business."
 
 ----
 
@@ -37,7 +37,7 @@ idea-terminal-engine/
       verification/       # QA smoke + E2E results
       logs/               # audit log, inference-call log
       reports/            # bootstrap-report.md for this run
-      gtm/                # live surface for THIS run (its own deploy target)
+      gtm/                # GTM v1 target area for THIS run (local run until a real deploy target exists)
   governance/             # rules.md, security.md, definition-of-done.md, THREADING.md, PORTABILITY.md
   scripts/                # bootstrap, self-test runners, dev tooling
   tests/                  # engine regression suite (Phase 8)
@@ -70,4 +70,4 @@ Build + first real client runs on free tier: **$0**. See `governance/stack.md` f
 
 ## Status
 
-v0.1 scaffold. Engine modules, schemas, state machine, agent-role stubs, pacing layer, CLI, tests, and governance docs are in place. Inference call sites are stubbed pending Phase 0.5 environment discovery against a real NIM endpoint.
+v0.1 prototype. Engine modules, schemas, state machine, agent-role runners, pacing layer, CLI, tests, and governance docs are in place. Inference call sites are **live via OmniRoute** (OpenAI-compatible adapter, all agent roles routed with fallback chains to NIM). This is a tested, runnable prototype codebase (local run) — no deployed URL exists yet.
